@@ -4015,64 +4015,144 @@ async function getTargetPreflightSnapshot(
 // MESSAGE ROUTER
 // ============================================================
 
-// Display-only lookups: never feed name-resolution results into readiness.
+// Display-only lookups: never feed names or lookup failures into readiness.
 async function getDependencyDisplayNames(request) {
     const key = item => `${Number(item.componentType)}:${normalizeGuid(item.objectId)}`;
+    const validGuid = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizeGuid(value)) && !rgDepZeroGuid(value);
     const items = [...new Map((request.dependencies || [])
-        .filter(item => Number.isInteger(Number(item.componentType)) &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizeGuid(item.objectId)))
-        .map(item => [key(item), item])).values()];
+        .filter(item => Number.isInteger(Number(item.componentType)) && validGuid(item.objectId))
+        .map(item => [key(item), { ...item, componentType: Number(item.componentType),
+            objectId: normalizeGuid(item.objectId), parentId: validGuid(item.parentId) ? normalizeGuid(item.parentId) : null }])).values()];
     const identities = {};
+    const diagnostics = {};
     const typeLabels = {};
     const errors = [];
     const origin = `${window.location.origin}/api/data/v9.2/`;
-    const lookups = [
-        { type: 59, set: "savedqueryvisualizations", id: "savedqueryvisualizationid",
-            select: "savedqueryvisualizationid,name,primaryentitytypecode",
-            context: row => row.primaryentitytypecode },
-        { type: 92, set: "sdkmessageprocessingsteps", id: "sdkmessageprocessingstepid",
-            select: "sdkmessageprocessingstepid,name,stage,mode",
-            context: () => "Plug-in Step" }
-    ];
-    await Promise.all(lookups.map(async lookup => {
-        const selected = items.filter(item => Number(item.componentType) === lookup.type);
-        if (!selected.length) return;
-        try {
-            const records = await fetchRecordsByIds(lookup.set, lookup.id,
-                selected.map(item => item.objectId), lookup.select);
-            for (const row of records) {
-                if (row.name) identities[`${lookup.type}:${normalizeGuid(row[lookup.id])}`] = {
-                    name: row.name, context: lookup.context(row) || ""
-                };
-            }
-        } catch (error) {
-            errors.push({ componentType: lookup.type, message: error.message || String(error) });
-        }
-    }));
-    const relationships = items.filter(item => [3, 10].includes(Number(item.componentType)));
-    // Bound concurrent metadata requests, retaining partial successes.
-    for (let offset = 0; offset < relationships.length; offset += 6) {
-        await Promise.all(relationships.slice(offset, offset + 6).map(async item => {
-            try {
-                const row = await dataverseFetch(`${origin}RelationshipDefinitions(${normalizeGuid(item.objectId)})?$select=MetadataId,SchemaName`);
-                if (row.SchemaName) identities[key(item)] = { name: row.SchemaName, context: "Relationship" };
-            } catch (error) {
-                errors.push({ componentType: Number(item.componentType), message: error.message || String(error) });
-            }
-        }));
+    // Known component-to-table mappings; table/column metadata supplies actual
+    // entity-set and primary-name attributes, never a guessed plural or label.
+    const entities = new Map([
+        [20, "role"], [24, "systemform"], [26, "savedquery"], [29, "workflow"],
+        [31, "report"], [36, "template"], [59, "savedqueryvisualization"],
+        [60, "systemform"], [61, "webresource"], [90, "plugintype"],
+        [91, "pluginassembly"], [92, "sdkmessageprocessingstep"],
+        [93, "sdkmessageprocessingstepimage"], [95, "serviceendpoint"],
+        [371, "connectionreference"], [380, "environmentvariabledefinition"]
+    ]);
+    const metadata = new Map();
+    const label = value => value?.UserLocalizedLabel?.Label || value?.LocalizedLabels?.[0]?.Label;
+    function recordError(selected, error) {
+        const status = Number(error.status) || null;
+        const code = [401, 403].includes(status) ? "access_denied" : "lookup_failed";
+        for (const item of selected) diagnostics[key(item)] = { code, status };
+        errors.push({ componentType: selected[0]?.componentType, code, status });
     }
-    // Ask the organization to identify undocumented types instead of guessing.
-    if (items.some(item => Number(item.componentType) === 36)) {
-        try {
-            const metadata = await dataverseFetch(`${origin}EntityDefinitions(LogicalName='solutioncomponent')/Attributes(LogicalName='componenttype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet`);
-            const option = metadata.OptionSet?.Options?.find(item => item.Value === 36);
-            const label = option?.Label?.UserLocalizedLabel?.Label || option?.Label?.LocalizedLabels?.[0]?.Label;
-            if (label) typeLabels[36] = label;
-        } catch (error) {
-            errors.push({ componentType: 36, message: error.message || String(error) });
+    async function getMetadata(logicalName) {
+        if (!metadata.has(logicalName)) {
+            metadata.set(logicalName, dataverseFetch(
+                `${origin}EntityDefinitions(LogicalName='${logicalName}')` +
+                `?$select=EntitySetName,PrimaryIdAttribute,PrimaryNameAttribute` +
+                (["workflow", "sdkmessageprocessingstep"].includes(logicalName)
+                    ? `&$expand=Attributes($select=LogicalName,AttributeType)` : "")));
+        }
+        return metadata.get(logicalName);
+    }
+    async function resolveEntities(selected) {
+        const families = [...new Set(selected.map(item => item.componentType).filter(type => entities.has(type)))];
+        for (let offset = 0; offset < families.length; offset += 4) {
+            await Promise.all(families.slice(offset, offset + 4).map(async type => {
+                const familyItems = selected.filter(item => item.componentType === type);
+                try {
+                    const meta = await getMetadata(entities.get(type));
+                    const idField = meta.PrimaryIdAttribute;
+                    const nameField = meta.PrimaryNameAttribute;
+                    if (!meta.EntitySetName || !idField || !nameField) throw new Error("Primary-name metadata unavailable");
+                    // Some dependency payloads contain the unique registration ID
+                    // rather than the primary record ID. Only query metadata-confirmed GUID attributes.
+                    const alternate = { 29: "workflowidunique", 92: "sdkmessageprocessingstepidunique" }[type];
+                    const idFields = [idField];
+                    if (alternate && meta.Attributes?.some(attr => attr.LogicalName === alternate && attr.AttributeType === "Uniqueidentifier")) idFields.push(alternate);
+                    for (let index = 0; index < familyItems.length; index += 20) {
+                        const chunk = familyItems.slice(index, index + 20);
+                        try {
+                            const ids = [...new Set(chunk.map(item => item.resolvedObjectId || item.objectId))];
+                            const filter = ids.flatMap(id => idFields.map(field => `${field} eq ${id}`)).join(" or ");
+                            const select = [...new Set([...idFields, nameField])].join(",");
+                            const records = await fetchAllPages(`${origin}${meta.EntitySetName}?$select=${select}&$filter=${encodeURIComponent(filter)}`);
+                            for (const item of chunk) {
+                                const id = item.resolvedObjectId || item.objectId;
+                                const matches = records.filter(row => idFields.some(field => normalizeGuid(row[field]) === id));
+                                if (matches.length === 1 && matches[0][nameField]) {
+                                    identities[key(item)] = { name: matches[0][nameField], context: "" };
+                                    delete diagnostics[key(item)];
+                                } else if (matches.length > 1) {
+                                    diagnostics[key(item)] = { code: "ambiguous" };
+                                }
+                            }
+                        } catch (error) { recordError(chunk, error); }
+                    }
+                } catch (error) { recordError(familyItems, error); }
+            }));
         }
     }
-    return { success: true, identities, typeLabels, errors };
+    async function resolveMetadata(selected) {
+        const result = new Map();
+        for (const [types, resolver] of [
+            [[1], rgDepResolveTableIdentities], [[2], rgDepResolveColumnIdentities],
+            [[3, 10], rgDepResolveRelationshipIdentities], [[9], rgDepResolveChoiceIdentities]
+        ]) {
+            const subset = selected.filter(item => types.includes(item.componentType));
+            if (!subset.length) continue;
+            try { await resolver(subset, result); }
+            catch (error) { recordError(subset, error); }
+        }
+        for (const [id, value] of result) {
+            const name = value.displayName || value.schemaName || value.name || value.logicalName;
+            if (name) {
+                identities[id] = { name, context: value.tableLogicalName || value.logicalName || "" };
+                delete diagnostics[id];
+            }
+        }
+    }
+    await resolveEntities(items);
+    // Only unresolved records incur SolutionComponent ID normalization.
+    const unresolved = items.filter(item => !identities[key(item)]);
+    const hydrated = await rgDepHydrateSolutionComponentReferences(unresolved);
+    // Do not use a remapped ID from a different component type.
+    // The shared hydrator keeps the original type, so verify remaps explicitly.
+    const remapped = hydrated.filter(item => item.resolvedObjectId !== item.objectId);
+    const safeRemapped = [];
+    for (let index = 0; index < remapped.length; index += 20) {
+        const chunk = remapped.slice(index, index + 20);
+        try {
+            const rows = await fetchRecordsByIds("solutioncomponents", "solutioncomponentid",
+                chunk.map(item => item.objectId), "solutioncomponentid,objectid,componenttype");
+            for (const item of chunk) {
+                if (rows.some(row => normalizeGuid(row.solutioncomponentid) === item.objectId &&
+                    normalizeGuid(row.objectid) === item.resolvedObjectId && Number(row.componenttype) === item.componentType)) safeRemapped.push(item);
+            }
+        } catch (error) { recordError(chunk, error); }
+    }
+    if (safeRemapped.length) await resolveEntities(safeRemapped);
+    await resolveMetadata(hydrated.map(item => ({ ...item,
+        resolvedObjectId: safeRemapped.some(safe => key(safe) === key(item)) ? item.resolvedObjectId : item.objectId
+    })));
+    // Runtime labels identify unknown types without inventing record mappings.
+    if (items.length) {
+        try {
+            const meta = await dataverseFetch(`${origin}EntityDefinitions(LogicalName='solutioncomponent')/Attributes(LogicalName='componenttype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet`);
+            for (const option of meta.OptionSet?.Options || []) {
+                const text = label(option.Label);
+                if (text) typeLabels[option.Value] = text;
+            }
+        } catch (_) { /* Keep known type labels and every dependency visible. */ }
+    }
+    for (const item of items) {
+        if (!identities[key(item)] && !diagnostics[key(item)]) {
+            diagnostics[key(item)] = { code: entities.has(item.componentType) || [1, 2, 3, 9, 10].includes(item.componentType)
+                ? "not_retrieved" : "unsupported_type" };
+        }
+    }
+    return { success: true, identities, typeLabels, diagnostics, errors };
 }
 
 

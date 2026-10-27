@@ -4912,6 +4912,7 @@ async function rgRenderColumnDependencyRows(
                     objectId:
                         dependency.dependentcomponentobjectid,
 
+                    parentId: dependency.dependentcomponentparentid,
                     dependencyType:
                         dependency.dependencytype
                 };
@@ -4932,6 +4933,7 @@ async function rgRenderColumnDependencyRows(
                     objectId:
                         dependency.requiredcomponentobjectid,
 
+                    parentId: dependency.requiredcomponentparentid,
                     dependencyType:
                         dependency.dependencytype
                 };
@@ -4985,7 +4987,8 @@ async function rgRenderColumnDependencyRows(
         item.objectId, item.componentType, explorerData)?.name);
     let displayNames = {};
     let typeLabels = {};
-    if (unresolved.some(item => [3, 10, 36, 59, 92].includes(Number(item.componentType)))) {
+    let diagnostics = {};
+    if (unresolved.length) {
         const result = await new Promise(resolve => {
             sendDynamicsMessage({ action: "getDependencyDisplayNames", dependencies: unresolved },
                 response => resolve(response), () => resolve(null));
@@ -4993,6 +4996,7 @@ async function rgRenderColumnDependencyRows(
         if (result?.success) {
             displayNames = result.identities || {};
             typeLabels = result.typeLabels || {};
+            diagnostics = result.diagnostics || {};
         }
     }
     // A slower response from a previously opened column must not replace this one.
@@ -5049,6 +5053,15 @@ async function rgRenderColumnDependencyRows(
                 const identity = rgResolveDependencyIdentity(
                     item.objectId, item.componentType, explorerData) ||
                     displayNames[`${Number(item.componentType)}:${String(item.objectId || "").replace(/[{}]/g, "").trim().toLowerCase()}`];
+                const lookupKey = `${Number(item.componentType)}:${String(item.objectId || "").replace(/[{}]/g, "").trim().toLowerCase()}`;
+                const diagnostic = diagnostics[lookupKey];
+                const reason = {
+                    access_denied: "Dataverse denied access to this record family.",
+                    lookup_failed: "The name lookup failed; the dependency remains valid.",
+                    ambiguous: "Multiple records matched; no name was selected.",
+                    not_retrieved: "No named record was returned. This does not prove it is missing.",
+                    unsupported_type: "Name lookup is not supported for this component type."
+                }[diagnostic?.code] || "Name unavailable from the current lookup.";
                 const typeText = typeLabels[item.componentType] || rgComponentTypeName(item.componentType);
                 const row = document.createElement("div");
                 row.className = "rg-dependency-item";
@@ -5061,6 +5074,7 @@ async function rgRenderColumnDependencyRows(
                     <details class="rg-dependency-technical">
                         <summary>Technical details</summary>
                         <dl>
+                            ${!identity?.name ? `<dt>Name resolution</dt><dd>${rgEscapeHtml(reason)}${diagnostic?.status ? ` (HTTP ${rgEscapeHtml(diagnostic.status)})` : ""}</dd>` : ""}
                             <dt>Component type</dt>
                             <dd>${rgEscapeHtml(typeText)} (${rgEscapeHtml(item.componentType)})</dd>
                             <dt>Component ID</dt>
