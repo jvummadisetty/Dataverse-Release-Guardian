@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Dataverse Release Guardian",
+  "version": "0.1.0",
+  "description": "Analyze Dynamics 365 and Dataverse environments for deployment risks.",
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.dynamics.com/*",
+    "https://*.crm.dynamics.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.dynamics.com/*",
+        "https://*.crm.dynamics.com/*"
+      ],
+      "js": [ "content.js" ]
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Dataverse Release Guardian"
+  }
+}

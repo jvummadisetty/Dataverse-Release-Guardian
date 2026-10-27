@@ -1,0 +1,1559 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>
+        Dataverse Release Guardian
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="styles.css"
+    />
+
+</head>
+
+
+<body>
+
+
+    <!-- =========================================================
+         ONE-TIME APP SPLASH
+
+         Important:
+         "Designed by Jaswanth Vummadisetty" belongs ONLY here.
+         sidepanel.js cleanup will make this appear only once.
+    ========================================================== -->
+
+    <div
+        id="rg26Splash"
+        class="rg26-splash"
+        aria-hidden="true"
+    >
+
+        <div class="rg26-splash-card">
+
+            <div class="rg26-splash-orb rg26-orb-one"></div>
+
+            <div class="rg26-splash-orb rg26-orb-two"></div>
+
+
+            <div class="rg26-splash-content">
+
+
+                <div class="rg26-logo rg26-logo-large">
+
+                    <svg
+                        viewBox="0 0 64 64"
+                        aria-hidden="true"
+                    >
+
+                        <defs>
+
+                            <linearGradient
+                                id="guardianSplashGradient"
+                                x1="0"
+                                y1="0"
+                                x2="1"
+                                y2="1"
+                            >
+
+                                <stop
+                                    offset="0%"
+                                    stop-color="#ffffff"
+                                />
+
+                                <stop
+                                    offset="100%"
+                                    stop-color="#bfdbfe"
+                                />
+
+                            </linearGradient>
+
+                        </defs>
+
+
+                        <path
+                            d="
+                                M32 4
+                                L54 12
+                                V28
+                                C54 43 45 54 32 60
+                                C19 54 10 43 10 28
+                                V12
+                                Z
+                            "
+                            fill="none"
+                            stroke="url(#guardianSplashGradient)"
+                            stroke-width="4"
+                            stroke-linejoin="round"
+                        />
+
+
+                        <path
+                            d="
+                                M24 19
+                                H33
+                                C42 19 47 24 47 32
+                                C47 40 42 45 33 45
+                                H24
+                                Z
+                            "
+                            fill="none"
+                            stroke="#ffffff"
+                            stroke-width="4"
+                            stroke-linejoin="round"
+                        />
+
+
+                        <path
+                            d="M24 19 V45"
+                            stroke="#ffffff"
+                            stroke-width="4"
+                            stroke-linecap="round"
+                        />
+
+                    </svg>
+
+                </div>
+
+
+                <h1>
+                    Dataverse
+                    <br />
+                    Release Guardian
+                </h1>
+
+
+                <p class="rg26-splash-tagline">
+
+                    Analyze
+
+                    <span>
+                        •
+                    </span>
+
+                    Validate
+
+                    <span>
+                        •
+                    </span>
+
+                    Protect
+
+                </p>
+
+
+                <div class="rg26-splash-platform">
+
+                    <span class="rg26-ms-grid">
+
+                        <i></i>
+                        <i></i>
+                        <i></i>
+                        <i></i>
+
+                    </span>
+
+                    Built for Microsoft Power Platform
+
+                </div>
+
+
+                <div class="rg26-splash-line"></div>
+
+
+                <small>
+                    Designed by
+                </small>
+
+
+                <strong class="rg26-splash-author">
+                    Jaswanth Vummadisetty
+                </strong>
+
+
+                <div class="rg26-splash-progress">
+
+                    <span></span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =========================================================
+         APPLICATION HEADER
+
+         No author credit here.
+    ========================================================== -->
+
+    <header
+        id="rg26BrandHeader"
+        class="rg26-brand-header"
+    >
+
+        <div class="rg26-brand-top">
+
+
+            <div class="rg26-logo">
+
+                <svg
+                    viewBox="0 0 64 64"
+                    aria-hidden="true"
+                >
+
+                    <path
+                        d="
+                            M32 4
+                            L54 12
+                            V28
+                            C54 43 45 54 32 60
+                            C19 54 10 43 10 28
+                            V12
+                            Z
+                        "
+                        fill="none"
+                        stroke="#ffffff"
+                        stroke-width="4"
+                        stroke-linejoin="round"
+                    />
+
+
+                    <path
+                        d="
+                            M24 19
+                            H33
+                            C42 19 47 24 47 32
+                            C47 40 42 45 33 45
+                            H24
+                            Z
+                        "
+                        fill="none"
+                        stroke="#ffffff"
+                        stroke-width="4"
+                        stroke-linejoin="round"
+                    />
+
+
+                    <path
+                        d="M24 19 V45"
+                        stroke="#ffffff"
+                        stroke-width="4"
+                        stroke-linecap="round"
+                    />
+
+                </svg>
+
+            </div>
+
+
+            <div class="rg26-brand-copy">
+
+                <strong>
+                    Dataverse Release Guardian
+                </strong>
+
+                <span>
+                    Analyze · Validate · Protect
+                </span>
+
+            </div>
+
+
+            <div
+                id="rg26ConnectionDot"
+                class="rg26-connection-dot"
+                title="Dataverse connection"
+            ></div>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =========================================================
+         APPLICATION
+    ========================================================== -->
+
+    <main class="app-shell">
+
+
+        <!-- =====================================================
+             HOME
+             Environment
+        ====================================================== -->
+
+        <section class="card">
+
+            <div class="card-header">
+
+                <h2>
+                    Environment
+                </h2>
+
+
+                <button
+                    id="detectButton"
+                    class="secondary-button"
+                    type="button"
+                >
+                    Detect
+                </button>
+
+            </div>
+
+
+            <div class="detail-grid">
+
+
+                <div>
+
+                    <label>
+                        Host
+                    </label>
+
+                    <div id="environmentHost">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Environment URL
+                    </label>
+
+                    <div id="environmentUrl">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Current Table
+                    </label>
+
+                    <div id="entityName">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Page Type
+                    </label>
+
+                    <div id="pageType">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        App ID
+                    </label>
+
+                    <div id="appId">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Page Title
+                    </label>
+
+                    <div id="environmentTitle">
+                        -
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =====================================================
+             HOME
+             Dataverse Connection
+        ====================================================== -->
+
+        <section class="card">
+
+            <div class="card-header">
+
+                <h2>
+                    Dataverse Connection
+                </h2>
+
+
+                <button
+                    id="whoAmIButton"
+                    class="primary-button"
+                    type="button"
+                >
+                    Test Connection
+                </button>
+
+            </div>
+
+
+            <p id="connectionStatus">
+                Not tested
+            </p>
+
+
+            <div class="detail-grid">
+
+
+                <div>
+
+                    <label>
+                        User ID
+                    </label>
+
+                    <div id="userId">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Organization ID
+                    </label>
+
+                    <div id="organizationId">
+                        -
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =====================================================
+             HOME
+             Solution Selection
+        ====================================================== -->
+
+        <section class="card">
+
+            <div class="card-header">
+
+                <h2>
+                    Solutions
+                </h2>
+
+
+                <button
+                    id="loadSolutionsButton"
+                    class="primary-button"
+                    type="button"
+                >
+                    Load Solutions
+                </button>
+
+            </div>
+
+
+            <p id="solutionStatus">
+                No solutions loaded
+            </p>
+
+
+            <select id="solutionSelect">
+
+                <option value="">
+                    Select a solution
+                </option>
+
+            </select>
+
+
+            <div
+                id="solutionDetails"
+                class="solution-details"
+                style="display:none;"
+            >
+
+                <div class="detail-grid">
+
+
+                    <div>
+
+                        <label>
+                            Unique Name
+                        </label>
+
+                        <div id="solutionUniqueName">
+                            -
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <label>
+                            Version
+                        </label>
+
+                        <div id="solutionVersion">
+                            -
+                        </div>
+
+                    </div>
+
+
+                    <div>
+
+                        <label>
+                            Type
+                        </label>
+
+                        <div id="solutionType">
+                            -
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+
+            <button
+                id="analyzeSolutionButton"
+                class="primary-button full-width"
+                type="button"
+                style="display:none;"
+            >
+                Analyze Solution
+            </button>
+
+        </section>
+
+
+
+        <!-- =====================================================
+             SOLUTION ANALYSIS
+        ====================================================== -->
+
+        <section
+            id="analysisCard"
+            class="card"
+            style="display:none;"
+        >
+
+            <h2>
+                Solution Analysis
+            </h2>
+
+
+            <p id="analysisStatus">
+                -
+            </p>
+
+
+            <div class="summary-grid">
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Total Components
+                    </span>
+
+                    <strong id="totalComponents">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <button
+                    id="tablesSummary"
+                    class="summary-box summary-button"
+                    type="button"
+                >
+
+                    <span>
+                        Tables
+                    </span>
+
+                    <strong id="tableCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Columns
+                    </span>
+
+                    <strong id="columnCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Forms
+                    </span>
+
+                    <strong id="formCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Views
+                    </span>
+
+                    <strong id="viewCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Workflows / Processes
+                    </span>
+
+                    <strong id="workflowCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Web Resources
+                    </span>
+
+                    <strong id="webResourceCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Choices
+                    </span>
+
+                    <strong id="choiceCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="summary-box">
+
+                    <span>
+                        Other
+                    </span>
+
+                    <strong id="otherCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =====================================================
+             TABLE LIST
+        ====================================================== -->
+
+        <section
+            id="tableDetailsSection"
+            class="card"
+            style="display:none;"
+        >
+
+            <h2>
+                Tables
+            </h2>
+
+
+            <p id="tableDetailsStatus">
+                -
+            </p>
+
+
+            <input
+                id="tableSearch"
+                class="search-input"
+                type="search"
+                placeholder="Search tables..."
+            />
+
+
+            <div
+                id="tableList"
+                class="component-list"
+            ></div>
+
+        </section>
+
+
+
+        <!-- =====================================================
+             TABLE INSPECTOR
+        ====================================================== -->
+
+        <section
+            id="tableInspector"
+            class="card"
+            style="display:none;"
+        >
+
+            <button
+                id="backToTablesButton"
+                class="secondary-button full-width"
+                type="button"
+            >
+                ← Back
+            </button>
+
+
+            <h2 id="inspectorTableName">
+                Table
+            </h2>
+
+
+            <p
+                id="inspectorLogicalName"
+                class="logical-name"
+            >
+                -
+            </p>
+
+
+            <p id="tableInspectorStatus">
+                -
+            </p>
+
+
+
+            <!-- ===============================================
+                 TABLE COMPONENT NAVIGATION
+            ================================================ -->
+
+            <div class="component-dashboard">
+
+
+                <button
+                    id="showColumnsButton"
+                    class="component-dashboard-button"
+                    type="button"
+                >
+
+                    <span>
+                        Columns
+                    </span>
+
+                    <strong id="inspectorColumnCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+                <button
+                    id="showFormsButton"
+                    class="component-dashboard-button"
+                    type="button"
+                >
+
+                    <span>
+                        Forms
+                    </span>
+
+                    <strong id="inspectorFormCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+                <button
+                    id="showViewsButton"
+                    class="component-dashboard-button"
+                    type="button"
+                >
+
+                    <span>
+                        Views
+                    </span>
+
+                    <strong id="inspectorViewCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+                <button
+                    id="showRelationshipsButton"
+                    class="component-dashboard-button"
+                    type="button"
+                >
+
+                    <span>
+                        Relationships
+                    </span>
+
+                    <strong id="inspectorRelationshipCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+                <button
+                    id="showBusinessRulesButton"
+                    class="component-dashboard-button"
+                    type="button"
+                >
+
+                    <span>
+                        Business Rules
+                    </span>
+
+                    <strong id="inspectorBusinessRuleCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+                <button
+                    id="showProcessesButton"
+                    class="component-dashboard-button"
+                    type="button"
+                >
+
+                    <span>
+                        Other Processes
+                    </span>
+
+                    <strong id="inspectorProcessCount">
+                        0
+                    </strong>
+
+                </button>
+
+
+            </div>
+
+
+
+            <!-- ===============================================
+                 COLUMNS
+            ================================================ -->
+
+            <div
+                id="columnsSection"
+                class="table-component-section"
+            >
+
+                <h3>
+                    Columns
+                </h3>
+
+
+                <p id="columnStatus">
+                    -
+                </p>
+
+
+                <div class="column-summary">
+
+
+                    <div>
+
+                        <span>
+                            Total Columns
+                        </span>
+
+                        <strong id="totalTableColumnCount">
+                            0
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Explicit Components
+                        </span>
+
+                        <strong id="includedColumnCount">
+                            0
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Effective Included
+                        </span>
+
+                        <strong id="effectiveColumnCount">
+                            0
+                        </strong>
+
+                    </div>
+
+
+                </div>
+
+
+                <input
+                    id="columnSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search columns..."
+                />
+
+
+                <div class="filter-row">
+
+
+                    <button
+                        id="filterAllColumns"
+                        class="filter-button"
+                        type="button"
+                    >
+                        All
+                    </button>
+
+
+                    <button
+                        id="filterIncludedColumns"
+                        class="filter-button"
+                        type="button"
+                    >
+                        Included
+                    </button>
+
+
+                    <button
+                        id="filterNotIncludedColumns"
+                        class="filter-button"
+                        type="button"
+                    >
+                        Not Explicit
+                    </button>
+
+
+                </div>
+
+
+                <div
+                    id="columnList"
+                    class="component-list"
+                ></div>
+
+            </div>
+
+
+
+            <!-- ===============================================
+                 FORMS
+            ================================================ -->
+
+            <div
+                id="formsSection"
+                class="table-component-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Forms
+                </h3>
+
+
+                <p id="formsStatus">
+                    -
+                </p>
+
+
+                <input
+                    id="formsSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search forms..."
+                />
+
+
+                <div
+                    id="formsList"
+                    class="component-list"
+                ></div>
+
+            </div>
+
+
+
+            <!-- ===============================================
+                 VIEWS
+            ================================================ -->
+
+            <div
+                id="viewsSection"
+                class="table-component-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Views
+                </h3>
+
+
+                <p id="viewsStatus">
+                    -
+                </p>
+
+
+                <input
+                    id="viewsSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search views..."
+                />
+
+
+                <div
+                    id="viewsList"
+                    class="component-list"
+                ></div>
+
+            </div>
+
+
+
+            <!-- ===============================================
+                 RELATIONSHIPS
+            ================================================ -->
+
+            <div
+                id="relationshipsSection"
+                class="table-component-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Relationships
+                </h3>
+
+
+                <p id="relationshipsStatus">
+                    -
+                </p>
+
+
+                <input
+                    id="relationshipsSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search relationships..."
+                />
+
+
+                <div
+                    id="relationshipsList"
+                    class="component-list"
+                ></div>
+
+            </div>
+
+
+
+            <!-- ===============================================
+                 BUSINESS RULES
+            ================================================ -->
+
+            <div
+                id="businessRulesSection"
+                class="table-component-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Business Rules
+                </h3>
+
+
+                <p id="businessRulesStatus">
+                    -
+                </p>
+
+
+                <input
+                    id="businessRulesSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search Business Rules..."
+                />
+
+
+                <div
+                    id="businessRulesList"
+                    class="component-list"
+                ></div>
+
+            </div>
+
+
+
+            <!-- ===============================================
+                 PROCESSES
+            ================================================ -->
+
+            <div
+                id="processesSection"
+                class="table-component-section"
+                style="display:none;"
+            >
+
+                <h3>
+                    Other Processes
+                </h3>
+
+
+                <p id="processesStatus">
+                    -
+                </p>
+
+
+                <input
+                    id="processesSearch"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search processes..."
+                />
+
+
+                <div
+                    id="processesList"
+                    class="component-list"
+                ></div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =====================================================
+             COLUMN INSPECTOR
+        ====================================================== -->
+
+        <section
+            id="columnInspector"
+            class="card"
+            style="display:none;"
+        >
+
+            <button
+                id="backToColumnsButton"
+                class="secondary-button full-width"
+                type="button"
+            >
+                ← Back
+            </button>
+
+
+            <h2 id="columnInspectorName">
+                Column
+            </h2>
+
+
+            <p
+                id="columnInspectorLogicalName"
+                class="logical-name"
+            >
+                -
+            </p>
+
+
+            <details class="rg4-metadata-disclosure">
+                <summary>Technical metadata <span>Schema, source, membership &amp; ID</span></summary>
+            <div class="detail-stack">
+
+
+                <div>
+
+                    <label>
+                        Schema Name
+                    </label>
+
+                    <div id="columnInspectorSchema">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Type
+                    </label>
+
+                    <div id="columnInspectorType">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Source
+                    </label>
+
+                    <div id="columnInspectorSource">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Solution Membership
+                    </label>
+
+                    <div id="columnInspectorMembership">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Metadata ID
+                    </label>
+
+                    <div id="columnInspectorMetadataId">
+                        -
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            </details>
+
+            <hr />
+
+
+            <!-- ===============================================
+                 USED BY
+            ================================================ -->
+
+            <h3>
+                Used By
+            </h3>
+
+
+            <div class="used-by-summary">
+
+
+                <div class="used-by-summary-box">
+
+                    <span>
+                        Forms
+                    </span>
+
+                    <strong id="usedByFormCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="used-by-summary-box">
+
+                    <span>
+                        Views
+                    </span>
+
+                    <strong id="usedByViewCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="used-by-summary-box">
+
+                    <span>
+                        Business Rules
+                    </span>
+
+                    <strong id="usedByBusinessRuleCount">
+                        0
+                    </strong>
+
+                </div>
+
+
+            </div>
+
+
+            <div
+                id="usedByTotalCount"
+                hidden
+            >
+                0
+            </div>
+
+
+            <p
+                id="usedByStatus"
+                class="used-by-status"
+            >
+                No references analyzed.
+            </p>
+
+
+            <div
+                id="usedByList"
+                class="used-by-list"
+            ></div>
+
+
+            <hr />
+
+
+            <!-- ===============================================
+                 COLUMN DEPLOYMENT ANALYSIS
+            ================================================ -->
+
+            <h3>
+                Deployment Analysis
+            </h3>
+
+
+            <div class="deployment-analysis-box">
+
+                <div>
+
+                    <label>
+                        Status
+                    </label>
+
+                    <div id="columnRiskStatus">
+                        -
+                    </div>
+
+                </div>
+
+
+                <p id="columnRiskReason">
+                    -
+                </p>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =====================================================
+             GENERIC COMPONENT INSPECTOR
+        ====================================================== -->
+
+        <section
+            id="componentInspector"
+            class="card"
+            style="display:none;"
+        >
+
+            <button
+                id="backToComponentListButton"
+                class="secondary-button full-width"
+                type="button"
+            >
+                ← Back
+            </button>
+
+
+            <h2 id="componentInspectorName">
+                Component
+            </h2>
+
+
+            <p
+                id="componentInspectorKind"
+                class="logical-name"
+            >
+                -
+            </p>
+
+
+            <div class="detail-stack">
+
+
+                <div>
+
+                    <label>
+                        Type
+                    </label>
+
+                    <div id="componentInspectorType">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Status
+                    </label>
+
+                    <div id="componentInspectorStatus">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Solution Membership
+                    </label>
+
+                    <div id="componentInspectorMembership">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        ID
+                    </label>
+
+                    <div id="componentInspectorId">
+                        -
+                    </div>
+
+                </div>
+
+
+                <div>
+
+                    <label>
+                        Details
+                    </label>
+
+                    <div id="componentInspectorDetails">
+                        -
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+
+    <!-- =========================================================
+         JAVASCRIPT
+    ========================================================== -->
+
+    <script src="sidepanel.js"></script>
+
+
+</body>
+
+</html>
