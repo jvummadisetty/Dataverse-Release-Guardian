@@ -6892,7 +6892,7 @@ function rgCreateReadinessPanel() {
                             "all";
 
 
-                        panel
+                        document
                             .querySelectorAll(
                                 "[data-rg-dependency-filter]"
                             )
@@ -6913,6 +6913,7 @@ function rgCreateReadinessPanel() {
                         );
 
 
+                        rgRenderReadinessDependencies.visibleCount = 25;
                         rgRenderReadinessDependencies();
                     }
                 );
@@ -7721,42 +7722,55 @@ function rgRenderReadinessDependencies() {
     const container = document.getElementById("rgDependencyList");
     if (!container) return;
     container.innerHTML = "";
-
-    let records = [...rgUniqueMissingComponents];
-
-    if (rgDependencyFilter === "blocking") {
-        records = records.filter(item => item.targetStatus === "missing");
-    }
-    else if (rgDependencyFilter === "managed") {
-        records = records.filter(item => item.targetStatus === "satisfied");
-    }
-    else if (rgDependencyFilter === "external") {
-        records = records.filter(item => !item.targetStatus || item.targetStatus === "verification");
-    }
+    container.dataset.filter = rgDependencyFilter;
+    const comparison = rg28LastComparison;
+    const verified = comparison ? [
+        ...(comparison.sameSolution || []), ...(comparison.otherSolutions || []),
+        ...(comparison.managedBase || []), ...(comparison.semanticMatches || [])
+    ] : [];
+    let records = comparison ? [
+        ...(comparison.confirmedMissing || []).map(item => ({ ...item, targetStatus: "missing" })),
+        ...(comparison.needsVerification || []).map(item => ({ ...item, targetStatus: "verification" })),
+        ...verified.map(item => ({ ...item, targetStatus: "satisfied" }))
+    ] : [...rgUniqueMissingComponents];
+    const counts = {
+        all: records.length,
+        blocking: records.filter(item => item.targetStatus === "missing").length,
+        managed: records.filter(item => item.targetStatus === "satisfied").length,
+        external: records.filter(item => !item.targetStatus || item.targetStatus === "verification").length
+    };
+    const labels = { all: "All", blocking: "Confirmed missing", managed: "Verified", external: "Not verified" };
+    document.querySelectorAll("[data-rg-dependency-filter]").forEach(button => {
+        const filter = button.dataset.rgDependencyFilter;
+        button.textContent = `${labels[filter]} (${counts[filter]})`;
+        button.classList.toggle("active", filter === rgDependencyFilter);
+        button.setAttribute("aria-pressed", String(filter === rgDependencyFilter));
+    });
+    if (rgDependencyFilter === "blocking") records = records.filter(item => item.targetStatus === "missing");
+    else if (rgDependencyFilter === "managed") records = records.filter(item => item.targetStatus === "satisfied");
+    else if (rgDependencyFilter === "external") records = records.filter(item => !item.targetStatus || item.targetStatus === "verification");
 
     if (!records.length) {
-        container.innerHTML = `<div class="rg-readiness-empty">No prerequisites in this category.</div>`;
+        container.innerHTML = `<div class="rg-readiness-empty">${comparison ? "No prerequisites in this category." : "No source prerequisite records in this category. The target has not been checked."}</div>`;
         return;
     }
-
-    records.slice(0, 100).forEach(function (dependency) {
-        const status = dependency.targetStatus || "sourceReview";
-        const cardStatus = status === "satisfied"
-            ? "satisfied"
-            : status === "missing"
-                ? "missing"
-                : "verification";
-
+    const limit = rgRenderReadinessDependencies.visibleCount || 25;
+    records.slice(0, limit).forEach(dependency => {
+        const status = dependency.targetStatus === "satisfied" ? "satisfied"
+            : dependency.targetStatus === "missing" ? "missing" : "verification";
         const wrapper = document.createElement("div");
-        wrapper.innerHTML = rg282HumanDependencyCard(dependency, cardStatus);
-        const card = wrapper.firstElementChild;
-        if (card) container.appendChild(card);
+        wrapper.innerHTML = rg282HumanDependencyCard(dependency, status);
+        if (wrapper.firstElementChild) container.appendChild(wrapper.firstElementChild);
     });
-
-    if (records.length > 100) {
-        const more = document.createElement("div");
-        more.className = "rg-more-results";
-        more.textContent = `+ ${records.length - 100} additional prerequisites`;
+    if (records.length > limit) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "secondary-button rg-flow-more-findings";
+        more.textContent = `Show more (${records.length - limit} remaining)`;
+        more.addEventListener("click", () => {
+            rgRenderReadinessDependencies.visibleCount = limit + 25;
+            rgRenderReadinessDependencies();
+        });
         container.appendChild(more);
     }
 }
@@ -13957,25 +13971,24 @@ function rg282RenderDirectSolutionComparison(
             </div>
 
 
+            <details class="rg-flow-id-diagnostics"><summary>Advanced ID diagnostics</summary>
+            <p>IDs can differ between environments. These counts do not identify missing components or changed definitions.</p>
             <div class="rg28-result-grid">
 
                 ${rg28Metric(
-        "Exact ID Matches",
-        exactMatches,
-        "success"
+        "Same component IDs",
+        exactMatches
     )}
 
                 ${rg28Metric(
-        "Source IDs Not Matched",
-        sourceOnlyById,
+        "Different or unmatched IDs",
         sourceOnlyById
-            ? "warning"
-            : "success"
     )}
 
             </div>
 
 
+            </details>
             <div class="rg282-comparison-note">
 
                 Counts are normalized to unique underlying solution components.
@@ -14592,10 +14605,6 @@ function rg282RenderDependencyComparison(
         managedBase +
         stableIdentity;
 
-    const reviewCount =
-        needsVerification +
-        configWarnings;
-
     const coverage = comparison.total > 0
         ? Math.max(
             0,
@@ -14606,100 +14615,53 @@ function rg282RenderDependencyComparison(
         )
         : 100;
 
+    const title = confirmedMissing
+        ? `${confirmedMissing} prerequisite${confirmedMissing === 1 ? " is" : "s are"} missing in the target`
+        : needsVerification ? `${needsVerification} prerequisite${needsVerification === 1 ? " needs" : "s need"} manual review`
+        : configWarnings ? "Configuration needs review" : "No blocking prerequisites detected";
+    const explanation = confirmedMissing
+        ? "Provide the missing prerequisites in the target, then run the check again."
+        : needsVerification ? "No prerequisites were confirmed missing. Review the unverified checks below before deployment."
+        : configWarnings ? "Prerequisites were verified. Review the configuration items below before deployment."
+        : "The checks found no confirmed missing prerequisites or unresolved findings. This does not guarantee that an import will succeed.";
     container.innerHTML = `
-
         <div class="rg282-result-card rg282-dependency-card rg282-readiness-focus">
-
             <div class="rg282-result-title">
-
-                <div>
-
-                    <span class="rg26-section-eyebrow">
-                        DEPENDENCY READINESS
-                    </span>
-
-                    <h3>
-                        Target check results
-                    </h3>
-
-                    <p class="rg282-section-explainer">
-                        Prerequisites checked across the destination environment.
-                    </p>
-
-
-                </div>
-
-                <span class="rg28-verdict ${comparison.verdict ===
-            "READY"
-            ? "rg28-ready"
-            : comparison.verdict === "BLOCKED"
-                ? "rg28-blocked"
-                : "rg28-warning"
-        }">
-                    ${comparison.verdict === "WARNING" ? "REVIEW" : comparison.verdict}
-                </span>
-
+                <div><h3>${rgEscapeHtml(title)}</h3>
+                    <p class="rg282-section-explainer">${rgEscapeHtml(explanation)}</p></div>
+                <span class="rg28-verdict ${comparison.verdict === "READY" ? "rg28-ready" : comparison.verdict === "BLOCKED" ? "rg28-blocked" : "rg28-warning"}">${comparison.verdict === "WARNING" ? "REVIEW" : comparison.verdict}</span>
             </div>
-
-            <div class="rg282-readiness-hero">
-                <div class="rg282-score-ring">
-                    <span>Verification coverage</span>
-                    <strong>${coverage}%</strong>
-                </div>
-                <div class="rg282-primary-metrics">
-                    ${rg28Metric("Verified", satisfied, "success")}
-                    ${rg28Metric("Needs Review", reviewCount, reviewCount ? "warning" : "success")}
-                    ${rg28Metric("Missing", confirmedMissing, confirmedMissing ? "danger" : "success")}
-                    ${rg28Metric("Config Issues", configWarnings, configWarnings ? "warning" : "success")}
-                </div>
+            <div class="rg-flow-finding-counts">
+                ${rg28Metric("Verified", satisfied, "success")}
+                ${rg28Metric("Not verified", needsVerification, needsVerification ? "warning" : "")}
+                ${rg28Metric("Confirmed missing", confirmedMissing, confirmedMissing ? "danger" : "")}
             </div>
-
-            <details class="rg282-analysis-details">
-                <summary>
-                    How this result was calculated
-                </summary>
-                <p class="rg282-section-explainer rg282-coverage-note">
-                    Coverage measures conclusive checks, including confirmed missing prerequisites.
-                    It is not a deployment guarantee. Unresolved components still require review.
-                </p>
-
-                <div class="rg28-result-grid rg282-detail-metrics">
-                    ${rg28Metric("Dependencies Checked", comparison.total)}
-                    ${rg28Metric("Stable Identity Matches", stableIdentity, stableIdentity ? "success" : "")}
-                    ${rg28Metric("Selected Target Solution", selectedTargetSolution)}
-                    ${rg28Metric("Other Target Solutions", otherTargetSolutions, otherTargetSolutions ? "success" : "")}
-                    ${rg28Metric("Managed / Base", managedBase)}
-                    ${rg28Metric("Needs Verification", needsVerification, needsVerification ? "warning" : "success")}
-                </div>
-            </details>
-
-            <div class="rg282-dependency-note">
-                Dependency readiness checks the entire target environment, not only the selected target solution.
-            </div>
-
-            <div id="rg282ProviderSolutions"></div>
-            <div id="rg282ConfirmedMissing"></div>
-            <div id="rg282NeedsVerification"></div>
+            ${configWarnings ? `<p class="rg-flow-config-count">${configWarnings} configuration item${configWarnings === 1 ? " also needs" : "s also need"} review.</p>` : ""}
+            <section id="rgFlowFindingsSlot" aria-label="Prerequisite findings"></section>
             <div id="rg282ConfigWarnings"></div>
-
+            <details class="rg282-analysis-details">
+                <summary>Technical check details</summary>
+                <div class="rg282-score-ring"><span>Conclusive check coverage</span><strong>${coverage}%</strong></div>
+                <p class="rg282-section-explainer rg282-coverage-note">Coverage includes both verified and confirmed-missing prerequisites. It is not a deployment score.</p>
+                <div class="rg28-result-grid rg282-detail-metrics">
+                    ${rg28Metric("Prerequisites checked", comparison.total)}
+                    ${rg28Metric("Stable identity matches", stableIdentity)}
+                    ${rg28Metric("In selected target solution", selectedTargetSolution)}
+                    ${rg28Metric("In other target solutions", otherTargetSolutions)}
+                    ${rg28Metric("Managed / base", managedBase)}
+                </div>
+                <div id="rg282ProviderSolutions"></div>
+            </details>
+            <div id="rg282ConfirmedMissing" hidden></div>
+            <div id="rg282NeedsVerification" hidden></div>
         </div>
     `;
-
-    rg282RenderProviders(
-        comparison.otherSolutions
-    );
-
-    rg282RenderConfirmedMissing(
-        comparison.confirmedMissing || []
-    );
-
-    rg282RenderNeedsVerification(
-        comparison.needsVerification
-    );
-
-    rg282RenderConfigWarnings(
-        comparison.configWarnings
-    );
+    rg282RenderProviders(comparison.otherSolutions || []);
+    rg282RenderConfigWarnings(comparison.configWarnings || []);
+    rgDependencyFilter = confirmedMissing ? "blocking" : needsVerification ? "external" : "managed";
+    rgRenderReadinessDependencies.visibleCount = 25;
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.placeFindings(comparison);
+    rgRenderReadinessDependencies();
 }
 
 
@@ -14979,11 +14941,11 @@ function rg282DependencyParentLabel(dependency) {
 }
 
 function rg282HumanDependencyCard(dependency, status) {
-    const componentName = rg282DependencyIdentityLabel(dependency);
+    let componentName = rg282DependencyIdentityLabel(dependency);
     const requiredBy = rg282RequiredByLabel(dependency);
-    const parentLabel = rg282DependencyParentLabel(dependency);
+    if (componentName === "Unknown Dependency") componentName = requiredBy
+        ? `Prerequisite for ${requiredBy}` : `Unidentified prerequisite · Type ${dependency?.componentType ?? "unknown"}`;
     const knownType = RG_COMPONENT_TYPES[dependency?.componentType] || null;
-    const componentType = knownType || "Unrecognized Dataverse component";
     const sourceId = dependency?.objectId || null;
     const resolvedSourceId = dependency?.resolvedObjectId || null;
     const targetId = dependency?.targetObjectId || null;
@@ -15016,7 +14978,7 @@ function rg282HumanDependencyCard(dependency, status) {
                 ? "POSSIBLE MISSING"
                 : ambiguous
                     ? "AMBIGUOUS MATCH"
-                    : "NEEDS VERIFICATION";
+                    : "NOT VERIFIED";
 
     const explanation = status === "missing"
         ? "Release Guardian resolved a high-confidence stable identity, checked the target environment, and did not find this prerequisite. Deployment may fail until it is provided."
@@ -15025,26 +14987,15 @@ function rg282HumanDependencyCard(dependency, status) {
             : dependency?.verificationReason ||
             "Release Guardian could not confidently identify this prerequisite in the target environment.";
 
-    const typeLine = parentLabel
-        ? `${componentType} • ${parentLabel}`
-        : knownType
-            ? componentType
-            : `Unrecognized Dataverse component • Type ${dependency?.componentType ?? "Unknown"}`;
-
     return `
         <article class="rg282-human-dependency rg282-human-${rgEscapeHtml(status)}">
-            <div class="rg282-human-status">${rgEscapeHtml(statusLabel)}</div>
-            <h4>${rgEscapeHtml(componentName)}</h4>
-            <div class="rg282-human-type">${rgEscapeHtml(typeLine)}</div>
-
-            ${requiredBy ? `
-                <div class="rg282-required-by">
-                    <span>REQUIRED BY</span>
-                    <strong>${rgEscapeHtml(requiredBy)}</strong>
-                </div>
-            ` : ""}
-
-            <p>${rgEscapeHtml(explanation)}</p>
+            <details class="rg-flow-finding">
+                <summary><span><strong>${rgEscapeHtml(componentName)}</strong>
+                    <small>${knownType ? rgEscapeHtml(knownType) : componentName.startsWith("Prerequisite for ") ? rgEscapeHtml(`Dataverse type ${dependency?.componentType ?? "unknown"}`) : ""}${requiredBy && !componentName.startsWith("Prerequisite for ") ? ` · Needed by ${rgEscapeHtml(requiredBy)}` : ""}</small></span>
+                    <span class="rg282-human-status">${rgEscapeHtml(statusLabel)}</span></summary>
+                <div class="rg-flow-finding-body">
+                    <p>${rgEscapeHtml(explanation)}</p>
+                    ${status === "verification" ? '<p class="rg-flow-next-action">Confirm this prerequisite with the solution owner before deployment. An unresolved identity is not proof that it is missing.</p>' : ""}
 
             <details class="rg282-technical-details">
                 <summary>Technical details</summary>
@@ -15061,6 +15012,8 @@ function rg282HumanDependencyCard(dependency, status) {
                     ${targetId ? `<div><dt>Target Component ID</dt><dd><code>${rgEscapeHtml(targetId)}</code></dd></div>` : ""}
                     ${dependency?.requiredBy?.objectId ? `<div><dt>Required By ID</dt><dd><code>${rgEscapeHtml(dependency.requiredBy.objectId)}</code></dd></div>` : ""}
                 </dl>
+            </details>
+                </div>
             </details>
         </article>
     `;

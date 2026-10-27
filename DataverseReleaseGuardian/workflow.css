@@ -282,3 +282,56 @@ body.rg-workflow {
 .rg-workflow .rg26-process-table { font-size: 11px !important; }
 .rg-workflow .detail-stack > div > div { font-size: 12px !important; }
 .rg-workflow .rg25-search, .rg-workflow input[type="search"] { font-size: 13px !important; }
+/* One readiness decision, followed by one findings list. */
+.rg-workflow .rg-flow-finding-counts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 18px 0 22px;
+}
+.rg-workflow .rg-flow-finding-counts .rg28-result-metric { min-width: 0; }
+.rg-workflow .rg-flow-finding-counts .rg28-result-metric span { min-height: 30px; line-height: 1.35; }
+.rg-workflow #rgFlowFindingsSlot .rg-readiness-section { margin: 0; padding: 0; border: 0; }
+.rg-workflow #rgFlowFindingsSlot .rg-readiness-section-heading,
+.rg-workflow #rgFlowFindingsSlot #rgDependencyStatus { display: none; }
+.rg-workflow #rgFlowFindingsSlot .rg-dependency-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.rg-workflow .rg-dependency-filter { font-size: 12px; padding: 8px 10px; border-radius: 8px; border: 1px solid #e0e5ef; background: #fff; }
+.rg-workflow .rg-dependency-filter.active { color: #3654cc; background: #eef2ff; border-color: #c4cfef; }
+.rg-workflow #rgDependencyList { display: block; }
+.rg-workflow .rg282-human-dependency { margin: 0; padding: 0; border: 0; border-bottom: 1px solid #e7ecf3; border-radius: 0; background: #fff; box-shadow: none; }
+.rg-workflow .rg-flow-finding > summary { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 14px 0; cursor: pointer; list-style: none; }
+.rg-workflow .rg-flow-finding > summary::-webkit-details-marker { display: none; }
+.rg-workflow .rg-flow-finding > summary::after { content: '+'; color: #68758a; font-size: 18px; }
+.rg-workflow .rg-flow-finding[open] > summary::after { content: '−'; }
+.rg-workflow .rg-flow-finding > summary > span:first-child { min-width: 0; flex: 1; }
+.rg-workflow .rg-flow-finding > summary strong { display: block; font-size: 13px; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
+.rg-workflow .rg-flow-finding > summary small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.5; color: #68758a; overflow-wrap: anywhere; }
+.rg-workflow .rg-flow-finding .rg282-human-status { margin: 0; font-size: 10px; letter-spacing: 0; font-weight: 600; color: #68758a; }
+.rg-workflow .rg-flow-finding-body { padding: 0 0 16px; }
+.rg-workflow .rg-flow-finding-body > p { font-size: 12px; line-height: 1.6; margin: 0 0 10px; color: #576780; }
+.rg-workflow .rg-flow-finding .rg282-technical-details > summary { font-size: 12px; }
+.rg-workflow .rg-flow-finding .rg282-technical-details dl { font-size: 12px; }
+.rg-workflow .rg-flow-next-action { color: #41516b; }
+.rg-workflow .rg-flow-more-findings { margin-top: 14px; width: 100%; }
+.rg-workflow .rg282-analysis-details { margin-top: 22px; }
+.rg-workflow .rg282-analysis-details .rg282-score-ring { margin: 8px 12px; }
+.rg-workflow .rg282-analysis-details #rg282ProviderSolutions { padding: 0 12px 12px; }
+.rg-workflow .rg282-provider-row strong { font-size: 12px; }
+.rg-workflow .rg282-provider-row span { font-size: 11px; line-height: 1.5; }
+.rg-workflow .rg282-provider-row b { font-size: 12px; }
+.rg-workflow .rg-flow-id-diagnostics { margin-top: 16px; }
+.rg-workflow .rg-flow-id-diagnostics > summary { font-size: 12px; cursor: pointer; padding: 12px 0; }
+.rg-workflow .rg-flow-id-diagnostics > p { font-size: 12px; line-height: 1.6; color: #68758a; }
+.rg-workflow #rgFlowPackageDetails .rg282-comparison-note { font-size: 12px; }
+.rg-workflow #rg282ConfigWarnings:empty { display: none; }
+.rg-workflow .rg-flow-config-count { font-size: 12px; color: #9d5a12; }
+@media (max-width: 420px) {
+    .rg-workflow .rg-flow-finding .rg282-human-status { display: none; }
+    .rg-workflow .rg-flow-finding-counts .rg28-result-metric { padding: 9px; }
+    .rg-workflow .rg-flow-finding-counts .rg28-result-metric span { font-size: 10px; }
+}
+
+.rg-workflow .rg-flow-finding > summary small:empty { display: none; }
+.rg-workflow #rgDependencyList:not([data-filter="all"]) .rg282-human-status { display: none; }
+.rg-workflow .rg282-subsection-title { font-size: 11px; margin-top: 16px; letter-spacing: .3px; }
+.rg-workflow #rg282ConfigWarnings .rg282-provider-row { background: #fff9ef; }
