@@ -168,7 +168,7 @@ const rgWorkflow = {
         sourceDisclosure.append(source);
         const packageDetails = document.createElement('details');
         packageDetails.className = 'rg-flow-disclosure';
-        packageDetails.innerHTML = '<summary>Source and target package counts</summary>';
+        packageDetails.innerHTML = '<summary>Package inventory comparison — separate from readiness</summary>';
         this.element('rg282SolutionComparison').before(packageDetails);
         packageDetails.append(this.element('rg282SolutionComparison'));
         packageDetails.hidden = true;
@@ -182,6 +182,18 @@ const rgWorkflow = {
         screen.append(records);
         records.append(this.element('rgReadinessPanel'));
         this.element('rgReadinessPanel').querySelector('h2').textContent = 'Prerequisite records';
+        this.findingsSection = this.element('rgDependencyList').closest('.rg-readiness-section');
+        this.findingsAnchor = document.createComment('Single prerequisite list home');
+        this.findingsSection.before(this.findingsAnchor);
+        this.findingsSection.querySelector('h3').textContent = 'Prerequisites';
+
+    },
+    placeFindings(comparison) {
+        if (!this.findingsSection) return;
+        const slot = this.element('rgFlowFindingsSlot');
+        if (comparison && slot) slot.append(this.findingsSection);
+        else if (this.findingsAnchor?.parentNode) this.findingsAnchor.after(this.findingsSection);
+        if (this.element('rgFlowSourceDetails')) this.element('rgFlowSourceDetails').hidden = !!comparison;
     },
     buildInspector() {
         const inspector = this.element('columnInspector');
@@ -361,6 +373,17 @@ const rgWorkflow = {
             if (setup) setup.open = !comparison;
         }
         document.body.dataset.targetChecked = String(!!comparison);
+        this.placeFindings(comparison);
+        const guide = document.querySelector('.rg-flow-readiness-guide');
+        if (guide) guide.hidden = !!comparison;
+        const heading = this.element('rgScreenReadiness')?.querySelector('.rg-screen-header');
+        if (heading) {
+            heading.querySelector('h2').textContent = 'Deployment readiness';
+            heading.querySelector('p').textContent = comparison
+                ? `${rg282GetSourceSolution()?.friendlyname || 'Source solution'} → ${this.element('rg28TargetTabSelect')?.selectedOptions[0]?.textContent || 'Target'}`
+                : 'Choose a destination to verify prerequisites before deployment.';
+        }
+
         this.text('rgFlowTargetSetupLabel', comparison
             ? `Destination: ${this.element('rg28TargetTabSelect')?.selectedOptions[0]?.textContent || 'Target'}`
             : 'Choose destination');

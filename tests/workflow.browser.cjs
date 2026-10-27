@@ -124,8 +124,11 @@ async function mockChrome() {
         await page.evaluate(() => fixture.activeTab = 2);
         await page.click('#rg28RunPreflight');
         await page.waitForFunction(() => document.body.dataset.targetChecked === 'true');
-        assert.equal(await page.locator('#rgFlowReadinessTitle').innerText(), 'Target check complete');
+        assert.equal(await page.locator('#rgFlowReadinessTitle').textContent(), 'Target check complete');
         assert.equal(await page.locator('#rgReadinessStatus').textContent(), 'READY');
+        assert.equal(await page.locator('#rgFlowSourceDetails').isVisible(), false);
+        assert.equal(await page.locator('#rgFlowFindingsSlot #rgDependencyList').count(), 1);
+        assert.equal(await page.locator('.rg282-score-ring').isVisible(), false);
         assert.ok(await page.evaluate(() => fixture.calls.filter(call => ['resolveDependencyIdentities', 'getSolutionExplorerData'].includes(call.action)).every(call => call.tabId === 1)));
         await page.evaluate(() => window.scrollTo(0,0));
         await page.screenshot({ path: '/tmp/guardian-result.png', fullPage: true });
@@ -135,14 +138,62 @@ async function mockChrome() {
         await page.click('#rg28RunPreflight');
         await page.waitForFunction(() => document.body.dataset.targetChecked === 'true');
         assert.equal(await page.locator('#rgReadinessStatus').textContent(), 'BLOCKED');
-        assert.equal(await page.locator('.rg282-score-ring strong').innerText(), '100%');
+        assert.equal(await page.locator('.rg282-score-ring strong').textContent(), '100%');
         await page.locator('#rgFlowTargetSetup > summary').click();
         await page.evaluate(() => fixture.targetOutcome = 'unknown');
         await page.click('#rg28RunPreflight');
         await page.waitForFunction(() => document.body.dataset.targetChecked === 'true');
         assert.equal(await page.locator('#rgReadinessStatus').textContent(), 'REVIEW');
         assert.equal((await page.locator('.rg28-verdict').innerText()).trim(), 'REVIEW');
-        assert.equal(await page.locator('.rg282-score-ring strong').innerText(), '0%');
+        assert.equal(await page.locator('.rg282-score-ring strong').textContent(), '0%');
+        // Reproduce the reported 344/335/9 case, including unrecognized component types.
+        await page.evaluate(() => {
+            const id = n => `10000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+            rg28LastComparison = {
+                verdict: 'WARNING', total: 344,
+                sameSolution: Array.from({ length: 335 }, (_, i) => ({ componentType: 1, objectId: id(i), identity: { displayName: `Verified table ${i}` } })),
+                otherSolutions: [], managedBase: [], semanticMatches: [], confirmedMissing: [], configWarnings: [],
+                needsVerification: Array.from({ length: 9 }, (_, i) => ({ componentType: 10078 + i, objectId: id(1000+i),
+                    requiredBy: i === 0 ? { identity: { name: 'Get Referral Closure KPIs' } } : null,
+                    verificationReason: 'A stable identity could not be resolved.' }))
+            };
+            rg282RenderDependencyComparison(rg28LastComparison);
+            rg282ApplyTargetReadinessToMainPanel(rg28LastComparison);
+            rgRenderReadinessDependencies();
+        });
+        assert.equal(await page.locator('.rg282-human-dependency').count(), 9);
+        assert.equal(await page.locator('#rgFlowFindingsSlot #rgDependencyList').count(), 1);
+        assert.equal(await page.locator('#rgFlowSourceDetails').isVisible(), false);
+        assert.equal(await page.locator('.rg-flow-readiness-guide').isVisible(), false);
+        assert.equal(await page.locator('.rg282-result-title h3').innerText(), '9 prerequisites need manual review');
+        assert.equal(await page.locator('[data-rg-dependency-filter="external"]').innerText(), 'Not verified (9)');
+        assert.equal(await page.locator('.rg282-analysis-details').getAttribute('open'), null);
+        assert.equal(await page.locator('#rg282NeedsVerification .rg282-human-dependency').count(), 0);
+        assert.equal(await page.locator('.rg-flow-finding[open]').count(), 0);
+        await page.locator('.rg-flow-finding > summary').first().click();
+        assert.ok((await page.locator('.rg-flow-finding-body').first().innerText()).includes('not proof that it is missing'));
+        await page.locator('.rg282-technical-details > summary').first().click();
+        assert.ok((await page.locator('.rg282-technical-details').first().innerText()).includes('10078'));
+        await page.locator('.rg-flow-finding > summary').first().click();
+        await page.setViewportSize({ width: 700, height: 900 });
+        await page.evaluate(() => window.scrollTo(0,0));
+        await page.screenshot({ path: '/tmp/guardian-readiness-review.png', fullPage: true });
+        for (const width of [320, 420, 700]) {
+            await page.setViewportSize({ width, height: 900 });
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Review result overflows at ${width}px`);
+        }
+        await page.locator('[data-rg-dependency-filter="managed"]').click();
+        assert.equal(await page.locator('.rg282-human-dependency').count(), 25);
+        await page.locator('.rg-flow-more-findings').click();
+        assert.equal(await page.locator('.rg282-human-dependency').count(), 50);
+        while (await page.locator('.rg-flow-more-findings').count()) await page.locator('.rg-flow-more-findings').click();
+        assert.equal(await page.locator('.rg282-human-dependency').count(), 335);
+        await page.locator('[data-rg-dependency-filter="external"]').click();
+        assert.equal(await page.locator('.rg282-human-dependency').count(), 9);
+        await page.locator('[data-rg-dependency-filter="blocking"]').click();
+        assert.equal(await page.locator('.rg282-human-dependency').count(), 0);
+        assert.ok((await page.locator('#rgDependencyList').innerText()).includes('No prerequisites'));
+        await page.setViewportSize({ width: 360, height: 900 });
         await page.locator('#rgFlowTargetSetup > summary').click();
         await page.selectOption('#rg28TargetTabSelect', '3');
         assert.equal(await page.locator('#rg28ComparisonResults').isVisible(), false);
