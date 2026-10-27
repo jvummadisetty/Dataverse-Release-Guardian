@@ -1,0 +1,284 @@
+/* Guided workspace. Scoped to the app; splash and attribution retain their styles. */
+body.rg-workflow {
+    background: #f5f7fa;
+    color: #202c42;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.rg-workflow .app-shell,
+.rg-workflow .rg26-brand-header {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 16px;
+}
+.rg-workflow .app-shell *,
+.rg-workflow .rg26-brand-header * {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+}
+.rg-workflow .app-shell code {
+    font-family: Consolas, monospace;
+}
+.rg-workflow .app-shell [hidden] { display: none !important; }
+.rg-workflow .rg26-brand-header { padding-bottom: 0; }
+.rg-workflow .rg26-brand-header strong { font-size: 15px; letter-spacing: -.3px; }
+.rg-workflow .rg26-brand-header .rg26-logo { width: 36px; height: 36px; border-radius: 11px; box-shadow: none; }
+.rg-workflow .rg26-brand-header .rg26-brand-copy span { font-size: 11px; color: #68758a; }
+.rg-workflow .rg-app-navigation {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    margin: 0 0 24px;
+    padding: 5px;
+    background: #fff;
+    border: 1px solid #e2e7f0;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px #1b2d4d06;
+}
+.rg-workflow .rg-nav-button { min-height: 49px; font-size: 11px; color: #68758a; gap: 4px; }
+.rg-workflow .rg-nav-button.active { background: #eef2ff; color: #3654cc; box-shadow: none; border: 0; }
+.rg-workflow .rg-nav-button.active::after { display: none; }
+.rg-workflow .rg-nav-button:disabled { opacity: .45; cursor: default; }
+.rg-workflow .rg26-nav-icon svg { width: 17px; height: 17px; }
+.rg-workflow .rg-screen-header { margin: 0 0 20px; padding: 0; }
+.rg-workflow .rg-screen-header h2 { font-size: 22px; line-height: 1.2; letter-spacing: -.65px; font-weight: 650; margin: 0 0 7px; }
+.rg-workflow .rg-screen-header h2:focus { outline: none; }
+.rg-workflow .rg-screen-header p { font-size: 13px; color: #68758a; line-height: 1.6; margin: 0; }
+.rg-workflow .card {
+    padding: 18px;
+    margin: 0 0 16px;
+    background: #fff;
+    border: 1px solid #e3e8f0;
+    border-radius: 14px;
+    box-shadow: none;
+}
+.rg-workflow .card h2 { font-size: 16px; font-weight: 650; letter-spacing: -.25px; }
+.rg-workflow .card h3 { font-size: 14px; }
+.rg-workflow .card label,
+.rg-workflow .detail-grid label { font-size: 11px; letter-spacing: 0; text-transform: none; color: #68758a; }
+.rg-workflow .primary-button,
+.rg-workflow .secondary-button,
+.rg-workflow .rg28-primary-action {
+    min-height: 39px;
+    padding: 9px 14px;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
+    line-height: 1.35;
+    white-space: normal;
+}
+.rg-workflow .primary-button,
+.rg-workflow .rg28-primary-action { background: #3654cc; border: 1px solid #3654cc; color: #fff; }
+.rg-workflow .primary-button:hover,
+.rg-workflow .rg28-primary-action:hover { background: #2945b4; transform: none; }
+.rg-workflow .secondary-button { background: #fff; border: 1px solid #dce2ec; color: #41516b; }
+.rg-workflow button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.rg-workflow select,
+.rg-workflow input[type="text"] { min-height: 42px; border-radius: 9px; font-size: 13px; padding: 10px 12px; }
+.rg-workflow :is(button,select,input,summary):focus-visible { outline: 2px solid #5878e0; outline-offset: 3px; }
+.rg-workflow .detail-grid { gap: 12px; }
+.rg-workflow .detail-grid > div { min-width: 0; overflow-wrap: anywhere; }
+.rg-workflow .detail-grid > div > div { font-size: 12px; }
+.rg-flow-eyebrow { display: block; color: #77849b; font-size: 10px; font-weight: 650; letter-spacing: 1.1px; margin-bottom: 6px; }
+.rg-flow-session { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0 20px; }
+.rg-flow-session > div { min-width: 0; }
+.rg-flow-session strong { display: block; font-size: 14px; overflow-wrap: anywhere; font-weight: 600; }
+.rg-flow-session p { font-size: 12px; color: #68758a; margin: 4px 0 0; }
+.rg-flow-session button { flex-shrink: 0; }
+.rg-workflow .rg-flow-solutions::before { display: none; }
+.rg-workflow .rg-flow-solutions .rg-premium-card-heading { display: none; }
+.rg-workflow .rg-flow-solutions .card-header h2 { display: block !important; }
+.rg-workflow .rg-flow-solutions > label { display: block; margin-bottom: 6px; }
+.rg-workflow .solution-details { background: #f7f9fc; border: 0; padding: 12px; margin: 12px 0; border-radius: 9px; }
+.rg-workflow #analyzeSolutionButton { margin-top: 16px; min-height: 43px; }
+.rg-workflow #solutionStatus { color: #68758a; font-size: 12px; margin: 8px 0 16px; }
+.rg-flow-diagnostics { margin: 20px 0; color: #68758a; }
+.rg-flow-diagnostics > summary,
+.rg-flow-disclosure > summary,
+.rg-flow-source-details > summary { padding: 12px 0; cursor: pointer; font-weight: 600; font-size: 12px; }
+.rg-workflow .rg-flow-diagnostics .card { margin: 8px 0; padding: 14px; background: #f8fafc; }
+.rg-workflow .rg-flow-diagnostics .card::before { display: none; }
+.rg-workflow .rg-flow-diagnostics .rg-premium-card-heading { display: none; }
+.rg-workflow .rg-flow-diagnostics .card-header h2 { display: block !important; }
+.rg-flow-diagnostic-actions { margin-top: 12px; }
+.rg-flow-overview { padding: 0 0 22px; }
+.rg-flow-overview h3 { margin: 0 0 5px; font-size: 23px; font-weight: 650; letter-spacing: -.6px; overflow-wrap: anywhere; }
+.rg-flow-overview p { margin: 0 0 18px; color: #68758a; font-size: 12px; }
+.rg-flow-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rg-flow-link { margin-top: 14px; padding: 0; border: 0; background: none; color: #3654cc; cursor: pointer; font-size: 12px; text-align: left; }
+.rg-workflow #analysisStatus { margin: 8px 0 16px; background: #f4f7fb; color: #586b82; font-size: 12px; border: 0; border-radius: 6px; padding: 6px 9px; }
+.rg-workflow .summary-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.rg-workflow #analysisCard .rg-premium-summary { min-height: 78px; padding: 12px; border-radius: 10px; border: 1px solid #e8edf4; background: #fff; box-shadow: none; }
+.rg-workflow #analysisCard .rg-summary-icon { display: none; }
+.rg-workflow #analysisCard .summary-grid strong { font-size: 24px; letter-spacing: -.6px; margin: 4px 0 0; }
+.rg-workflow #analysisCard .summary-grid span { font-size: 11px; color: #68758a; text-transform: none; letter-spacing: 0; }
+.rg-workflow #rgReadinessShortcut { display: none; }
+.rg-workflow .rg-premium-deployment-components { background: transparent; padding: 14px 0 0; border: 0; }
+.rg-workflow #rg25PlatformComponents h3 { font-size: 13px; color: #68758a; }
+.rg-workflow .rg-deployment-button { box-shadow: none; min-height: 38px; }
+.rg-workflow[data-analysis-state="loading"] #analysisCard .summary-grid,
+.rg-workflow[data-analysis-state="error"] #analysisCard .summary-grid,
+.rg-workflow[data-analysis-state="loading"] #rg25PlatformComponents,
+.rg-workflow[data-analysis-state="error"] #rg25PlatformComponents { display: none; }
+.rg-workflow[data-analysis-state="loading"] #analysisStatus::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid #cbd5ef; border-top-color: #3654cc; border-radius: 50%; animation: rg-flow-spin .8s linear infinite; }
+@keyframes rg-flow-spin { to { transform: rotate(360deg); } }
+.rg-workflow .rg27-explorer-hero { display: none; }
+.rg-workflow .rg27-explorer-grid { gap: 8px; }
+.rg-workflow .rg27-explorer-card { min-height: 72px; padding: 14px; border-radius: 11px; border: 1px solid #e3e8f0; background: #fff; box-shadow: none; }
+.rg-workflow .rg27-explorer-card:hover { border-color: #99abe9; background: #f8faff; transform: none; }
+.rg-workflow .rg27-explorer-card strong { font-size: 23px; letter-spacing: -.5px; }
+.rg-workflow .rg27-explorer-card span { font-size: 12px; }
+.rg-workflow .rg-explorer-icon { width: 31px; height: 31px; border-radius: 9px; }
+.rg-workflow .rg27-card-arrow { background: transparent; }
+.rg-flow-readiness-guide { margin-bottom: 22px; }
+.rg-flow-readiness-guide h3 { margin: 0 0 7px; font-size: 23px; letter-spacing: -.5px; font-weight: 650; }
+.rg-flow-readiness-guide p { font-size: 13px; color: #68758a; margin: 0 0 10px; }
+.rg-flow-steps { counter-reset: step; display: flex; gap: 10px; list-style: none; padding: 14px 0 0; margin: 0; border-top: 1px solid #e3e8f0; }
+.rg-flow-steps li { flex: 1; min-width: 0; font-size: 11px; color: #8190a8; }
+.rg-flow-steps li::before { counter-increment: step; content: counter(step); display: block; width: 23px; height: 23px; line-height: 23px; border-radius: 50%; background: #e9edf4; color: #68758a; text-align: center; margin-bottom: 5px; }
+.rg-flow-steps li[aria-current="step"] { color: #3654cc; font-weight: 600; }
+.rg-flow-steps li[aria-current="step"]::before { color: #fff; background: #3654cc; }
+.rg-flow-steps li.is-complete::before { content: '✓'; background: #e6f4ee; color: #247852; }
+.rg-workflow .rg282-source-target-grid { display: flex; flex-direction: column; gap: 10px; }
+.rg-workflow .rg282-environment-card { min-height: 0; border: 0; background: transparent; padding: 0; }
+.rg-workflow .rg-flow-source-details { border-bottom: 1px solid #e8edf4; padding-bottom: 8px; }
+.rg-workflow .rg-flow-source-details .rg282-environment-card { padding: 4px 0 10px; }
+.rg-workflow .rg282-environment-label { font-size: 10px; letter-spacing: .7px; background: transparent; color: #68758a; padding: 0; margin-bottom: 9px; }
+.rg-workflow .rg28-panel-header .rg26-section-eyebrow { display: none; }
+.rg-workflow .rg28-panel-header h2 { margin: 0 0 5px; }
+.rg-workflow .rg28-panel-header p { font-size: 12px; line-height: 1.6; color: #68758a; }
+.rg-workflow .rg28-target-panel { border-color: #e3e8f0; }
+.rg-workflow #rg28VerifyTarget { display: none; }
+.rg-workflow.rg-flow-target-error #rg28VerifyTarget { display: inline-block; }
+.rg-workflow #rg28RefreshTargets { margin: 8px 0 15px; }
+.rg-workflow .rg282-environment-card label { display: block; margin-bottom: 6px; }
+.rg-workflow .rg282-target-solution-info:empty { display: none; }
+.rg-workflow .rg282-target-solution-info { background: #f7f9fc; border: 0; padding: 10px; margin: 8px 0; }
+.rg-workflow #rg28RunPreflight { width: 100%; margin-top: 16px; }
+.rg-workflow .rg28-status-box { font-size: 12px; line-height: 1.6; padding: 10px 0 0; margin-top: 8px; background: transparent; border: 0; color: #68758a; }
+.rg-workflow .rg28-status-warning { color: #9d5a12; }
+.rg-workflow .rg28-status-success { color: #247852; }
+.rg-workflow .rg-flow-disclosure { border-top: 1px solid #e3e8f0; margin-top: 12px; }
+.rg-workflow #rgReadinessPanel { padding: 8px 0 0; margin: 0; border: 0; background: transparent; }
+.rg-workflow[data-target-checked="false"] #rgReadinessPanel .rg-readiness-header,
+.rg-workflow[data-target-checked="false"] #rgReadinessPanel .rg-readiness-score-grid { display: none; }
+.rg-workflow #rgReadinessPanel .rg-readiness-solution { background: transparent; border: 0; padding: 0 0 12px; }
+.rg-workflow .rg-readiness-description,
+.rg-workflow #rgReadinessRecommendation { font-size: 12px; line-height: 1.6; }
+.rg-workflow .rg282-result-card { border: 0; box-shadow: none; padding: 18px 0 0; }
+.rg-workflow .rg282-score-ring { border-radius: 14px; box-shadow: none; }
+.rg-workflow .rg282-primary-metrics { gap: 8px; }
+.rg-workflow .rg28-metric { border-radius: 9px; box-shadow: none; }
+.rg-workflow #rgFlowPackageDetails .rg282-result-card { padding: 6px 0; }
+.rg-workflow #columnInspector { padding: 16px !important; }
+.rg-flow-evidence-tabs { display: flex; gap: 4px; margin: 20px 0 14px; padding: 4px; background: #eaf0f7; border-radius: 10px; }
+.rg-flow-evidence-tabs button { flex: 1; min-width: 0; border: 0; padding: 9px 6px; font-size: 12px; font-weight: 600; background: transparent; border-radius: 7px; color: #68758a; cursor: pointer; }
+.rg-flow-evidence-tabs button[aria-selected="true"] { background: #fff; color: #3654cc; box-shadow: 0 1px 3px #1828460a; }
+.rg-workflow #columnInspector #rgFlowUsagePanel > h3,
+.rg-workflow #rgColumnDependencyPanel > h3,
+.rg-workflow #rgColumnDependencyPanel > hr { display: none; }
+.rg-flow-note { font-size: 12px; color: #68758a; line-height: 1.6; }
+.rg-workflow #columnInspector .rg-dependency-item span,
+.rg-workflow #columnInspector .used-by-item > div:first-child { font-size: 13px !important; }
+.rg-workflow #columnInspector .used-by-summary-box span,
+.rg-workflow #columnInspector .rg-column-dependency-summary span { font-size: 10px !important; }
+.rg-workflow #columnInspector .used-by-status,
+.rg-workflow #columnInspector .used-by-item small,
+.rg-workflow #columnInspector .rg-dependency-item small { font-size: 11px !important; }
+@media (max-width: 420px) {
+    .rg-workflow .app-shell, .rg-workflow .rg26-brand-header { padding: 12px; }
+    .rg-workflow .rg26-brand-header { padding-bottom: 0; }
+    .rg-workflow .card { padding: 14px; }
+    .rg-workflow .rg-screen-header h2 { font-size: 21px; }
+    .rg-flow-session { display: block; }
+    .rg-flow-session button { margin-top: 10px; min-height: 34px; }
+    .rg-workflow .summary-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    .rg-workflow .rg27-explorer-card { padding: 12px; gap: 8px; }
+    .rg-workflow .rg27-explorer-card .rg-explorer-icon { display: none; }
+    .rg-workflow .rg27-explorer-card span { font-size: 11px; }
+    .rg-flow-actions { flex-direction: column; }
+    .rg-flow-actions button { width: 100%; }
+    .rg-workflow .rg282-readiness-hero { display: flex; flex-direction: column; align-items: stretch; }
+    .rg-workflow .rg282-result-title { flex-wrap: wrap; }
+    .rg-flow-evidence-tabs button { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rg-workflow .app-shell *, .rg-workflow .app-shell *::before { animation: none !important; transition: none !important; scroll-behavior: auto; }
+}
+
+/* Override legacy fixed-size typography within the guided workspace. */
+.rg-workflow .rg-screen-header h2 { font-size: 22px !important; }
+.rg-workflow .rg-screen-header p { font-size: 13px !important; }
+.rg-workflow .rg-nav-button { font-size: 11px !important; }
+.rg-workflow .primary-button, .rg-workflow .secondary-button,
+.rg-workflow .rg28-primary-action { font-size: 12px !important; }
+.rg-workflow select, .rg-workflow input { font-size: 13px !important; }
+.rg-workflow .card label { font-size: 11px !important; letter-spacing: 0 !important; }
+.rg-workflow .detail-grid > div > div { font-size: 12px !important; }
+.rg-workflow #analysisStatus, .rg-workflow #solutionStatus { font-size: 12px !important; }
+.rg-workflow #analysisCard .summary-box {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 76px !important;
+    padding: 12px !important;
+    border: 1px solid #e3e8f0 !important;
+    background: #fff !important;
+    box-shadow: none;
+    text-align: left;
+}
+.rg-workflow #analysisCard .summary-box span { font-size: 11px !important; line-height: 1.4; letter-spacing: 0 !important; text-transform: none; font-weight: 500 !important; }
+.rg-workflow #analysisCard .summary-box strong { font-size: 24px !important; margin-top: 5px !important; }
+.rg-workflow #analysisCard .summary-box:hover { transform: none; }
+.rg-workflow #rgReadinessShortcut { display: none !important; }
+.rg-workflow #rg25PlatformComponents { background: transparent; padding: 16px 0 0 !important; border: 0; box-shadow: none; }
+.rg-workflow #rg25PlatformComponents .rg25-shortcut-grid button { font-size: 11px !important; box-shadow: none; }
+.rg-workflow .rg27-explorer-card span { font-size: 12px !important; }
+.rg-workflow .rg27-explorer-card strong { font-size: 23px !important; }
+.rg-workflow .rg-flow-target-setup > summary { padding: 4px 0 12px; cursor: pointer; color: #41516b; font-size: 13px; font-weight: 600; }
+.rg-workflow .rg28-panel-header h2 { font-size: 15px; }
+.rg-workflow .rg28-panel-header p { font-size: 12px !important; }
+.rg-workflow .rg282-target-solution-info strong,
+.rg-workflow .rg282-target-solution-info span,
+.rg-workflow .rg282-target-solution-info small { display: block; }
+.rg-workflow .rg282-result-title h3 { font-size: 19px; line-height: 1.3; }
+.rg-workflow .rg282-result-title p { font-size: 12px !important; line-height: 1.6; }
+.rg-workflow .rg282-score-ring strong { font-size: 32px !important; }
+.rg-workflow .rg282-score-ring span, .rg-workflow .rg28-metric span { font-size: 11px !important; }
+.rg-workflow .rg28-metric strong { font-size: 23px !important; }
+.rg-workflow .rg282-dependency-note { font-size: 11px !important; line-height: 1.5; }
+
+.rg-workflow .rg28-result-metric { border-radius: 9px; padding: 12px; }
+.rg-workflow .rg28-result-metric span { font-size: 11px; text-transform: none; line-height: 1.4; }
+.rg-workflow .rg28-result-metric strong { font-size: 23px; }
+.rg-workflow .rg28-verdict { font-size: 11px !important; padding: 5px 10px; }
+.rg-workflow #rgFlowPlatformDetails #rg25PlatformComponents > h3 { display: none; }
+.rg-workflow #analysisCard [role="button"]:focus-visible { outline: 2px solid #5878e0; outline-offset: 3px; }
+@media (max-width: 350px) {
+    .rg-workflow #analysisCard .summary-box { padding: 9px !important; }
+    .rg-workflow #analysisCard .summary-box span { font-size: 10px !important; }
+}
+
+.rg-workflow .rg282-score-ring {
+    flex-direction: row;
+    justify-content: space-between;
+    min-height: 56px;
+    gap: 12px;
+    padding: 12px;
+    border: 0;
+    background: #f3f6fb;
+}
+.rg-workflow .rg282-score-ring strong { font-size: 24px !important; }
+.rg-workflow .rg282-score-ring span { margin: 0; }
+.rg-workflow .rg282-analysis-details > p { margin: 0; padding: 0 12px 12px; font-size: 12px; }
+.rg-workflow .rg282-dependency-note { display: none; }
+.rg-workflow .component-row strong,
+.rg-workflow .rg25-record-main strong,
+.rg-workflow .rg26-process-row-content > strong { font-size: 13px !important; }
+.rg-workflow .component-row small,
+.rg-workflow .rg25-record-main span,
+.rg-workflow .rg26-process-table { font-size: 11px !important; }
+.rg-workflow .detail-stack > div > div { font-size: 12px !important; }
+.rg-workflow .rg25-search, .rg-workflow input[type="search"] { font-size: 13px !important; }
