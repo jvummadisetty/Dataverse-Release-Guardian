@@ -4877,6 +4877,9 @@ async function rgRenderColumnDependencyRows(
     required
 ) {
 
+    const renderVersion = (rgRenderColumnDependencyRows.version || 0) + 1;
+    rgRenderColumnDependencyRows.version = renderVersion;
+    const inspectedColumn = selectedColumn;
     const container =
         document.getElementById(
             "rgColumnDependencyList"
@@ -4978,6 +4981,23 @@ async function rgRenderColumnDependencyRows(
     }
 
 
+    const unresolved = rows.filter(item => !rgResolveDependencyIdentity(
+        item.objectId, item.componentType, explorerData)?.name);
+    let displayNames = {};
+    let typeLabels = {};
+    if (unresolved.some(item => [3, 10, 36, 59, 92].includes(Number(item.componentType)))) {
+        const result = await new Promise(resolve => {
+            sendDynamicsMessage({ action: "getDependencyDisplayNames", dependencies: unresolved },
+                response => resolve(response), () => resolve(null));
+        });
+        if (result?.success) {
+            displayNames = result.identities || {};
+            typeLabels = result.typeLabels || {};
+        }
+    }
+    // A slower response from a previously opened column must not replace this one.
+    if (renderVersion !== rgRenderColumnDependencyRows.version || selectedColumn !== inspectedColumn) return;
+
     container.innerHTML =
         "";
 
@@ -5027,8 +5047,9 @@ async function rgRenderColumnDependencyRows(
 
             for (const item of items) {
                 const identity = rgResolveDependencyIdentity(
-                    item.objectId, item.componentType, explorerData);
-                const typeText = rgComponentTypeName(item.componentType);
+                    item.objectId, item.componentType, explorerData) ||
+                    displayNames[`${Number(item.componentType)}:${String(item.objectId || "").replace(/[{}]/g, "").trim().toLowerCase()}`];
+                const typeText = typeLabels[item.componentType] || rgComponentTypeName(item.componentType);
                 const row = document.createElement("div");
                 row.className = "rg-dependency-item";
                 const primaryText = identity?.name || `Unresolved ${typeText}`;

@@ -4015,6 +4015,67 @@ async function getTargetPreflightSnapshot(
 // MESSAGE ROUTER
 // ============================================================
 
+// Display-only lookups: never feed name-resolution results into readiness.
+async function getDependencyDisplayNames(request) {
+    const key = item => `${Number(item.componentType)}:${normalizeGuid(item.objectId)}`;
+    const items = [...new Map((request.dependencies || [])
+        .filter(item => Number.isInteger(Number(item.componentType)) &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizeGuid(item.objectId)))
+        .map(item => [key(item), item])).values()];
+    const identities = {};
+    const typeLabels = {};
+    const errors = [];
+    const origin = `${window.location.origin}/api/data/v9.2/`;
+    const lookups = [
+        { type: 59, set: "savedqueryvisualizations", id: "savedqueryvisualizationid",
+            select: "savedqueryvisualizationid,name,primaryentitytypecode",
+            context: row => row.primaryentitytypecode },
+        { type: 92, set: "sdkmessageprocessingsteps", id: "sdkmessageprocessingstepid",
+            select: "sdkmessageprocessingstepid,name,stage,mode",
+            context: () => "Plug-in Step" }
+    ];
+    await Promise.all(lookups.map(async lookup => {
+        const selected = items.filter(item => Number(item.componentType) === lookup.type);
+        if (!selected.length) return;
+        try {
+            const records = await fetchRecordsByIds(lookup.set, lookup.id,
+                selected.map(item => item.objectId), lookup.select);
+            for (const row of records) {
+                if (row.name) identities[`${lookup.type}:${normalizeGuid(row[lookup.id])}`] = {
+                    name: row.name, context: lookup.context(row) || ""
+                };
+            }
+        } catch (error) {
+            errors.push({ componentType: lookup.type, message: error.message || String(error) });
+        }
+    }));
+    const relationships = items.filter(item => [3, 10].includes(Number(item.componentType)));
+    // Bound concurrent metadata requests, retaining partial successes.
+    for (let offset = 0; offset < relationships.length; offset += 6) {
+        await Promise.all(relationships.slice(offset, offset + 6).map(async item => {
+            try {
+                const row = await dataverseFetch(`${origin}RelationshipDefinitions(${normalizeGuid(item.objectId)})?$select=MetadataId,SchemaName`);
+                if (row.SchemaName) identities[key(item)] = { name: row.SchemaName, context: "Relationship" };
+            } catch (error) {
+                errors.push({ componentType: Number(item.componentType), message: error.message || String(error) });
+            }
+        }));
+    }
+    // Ask the organization to identify undocumented types instead of guessing.
+    if (items.some(item => Number(item.componentType) === 36)) {
+        try {
+            const metadata = await dataverseFetch(`${origin}EntityDefinitions(LogicalName='solutioncomponent')/Attributes(LogicalName='componenttype')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$expand=OptionSet`);
+            const option = metadata.OptionSet?.Options?.find(item => item.Value === 36);
+            const label = option?.Label?.UserLocalizedLabel?.Label || option?.Label?.LocalizedLabels?.[0]?.Label;
+            if (label) typeLabels[36] = label;
+        } catch (error) {
+            errors.push({ componentType: 36, message: error.message || String(error) });
+        }
+    }
+    return { success: true, identities, typeLabels, errors };
+}
+
+
 async function handleReleaseGuardianMessage(
     request
 ) {
@@ -4022,6 +4083,11 @@ async function handleReleaseGuardianMessage(
     switch (
     request?.action
     ) {
+
+        case "getDependencyDisplayNames":
+
+            return getDependencyDisplayNames(request);
+
 
         case "whoAmI":
 
