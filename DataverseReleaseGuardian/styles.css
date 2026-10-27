@@ -3865,3 +3865,65 @@ input[type="text"] {
             padding: 10px 3px;
         }
 }
+
+/* V4.1: compact Column Inspector and dependency type disclosures. */
+#columnInspector .deployment-analysis-box {
+    border: 0;
+    border-left: 3px solid #6482b7;
+    background: #f3f7fd;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+#columnInspector > h2 + h3 {
+    margin-top: 10px;
+}
+#columnInspector .deployment-analysis-box label {
+    display: none;
+}
+#columnInspector .rg4-metadata-disclosure,
+#columnInspector .used-by-summary-box,
+#columnInspector .rg-column-dependency-summary > div {
+    border: 0;
+}
+#columnInspector .used-by-summary-box,
+#columnInspector .rg-column-dependency-summary > div {
+    padding: 8px 6px;
+}
+#columnInspector .rg4-dependency-group {
+    border: 0;
+    border-radius: 8px;
+    background: #f8faff;
+}
+#columnInspector .rg4-dependency-group > summary {
+    padding: 9px 10px;
+}
+#columnInspector .rg41-dependency-type {
+    border: 0;
+    border-radius: 0;
+    margin: 0 8px;
+}
+#columnInspector .rg41-dependency-type > summary {
+    background: #fff;
+    padding: 9px 6px;
+    font-weight: 600;
+}
+#columnInspector .rg41-dependency-type .rg-dependency-item {
+    margin: 0 8px;
+    padding: 9px 0;
+}
+#columnInspector .rg-dependency-technical > summary {
+    cursor: pointer;
+    color: #5271a6;
+    padding: 3px 0;
+}
+#columnInspector .rg-dependency-technical dl {
+    margin: 6px 0;
+}
+#columnInspector .rg-dependency-technical dt {
+    color: #667b9a;
+    margin-top: 6px;
+}
+#columnInspector .rg-dependency-technical dd {
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+}
