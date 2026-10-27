@@ -4982,160 +4982,74 @@ async function rgRenderColumnDependencyRows(
         "";
 
 
-    const dependencySections = new Map();
-    for (const [direction, count] of [
-        ["Used By", dependents.length],
-        ["Depends On", required.length]
-    ]) {
-        if (!count) continue;
+    // Keep direction and component type as separate levels of evidence.
+    const groups = [
+        { name: "Forms", types: [24, 60] },
+        { name: "Views", types: [26] },
+        { name: "Workflows / Business Rules", types: [29] },
+        { name: "Columns", types: [2] },
+        { name: "Charts", types: [59] },
+        { name: "Plug-in Steps", types: [92] },
+        { name: "Other", types: [] }
+    ];
+    const knownTypes = new Set(groups.flatMap(group => group.types));
+
+    function createSection(label, count, className, open) {
         const section = document.createElement("details");
-        section.className = "rg4-reference-group rg4-dependency-group";
-        section.open = direction === "Used By";
+        section.className = className;
+        section.open = open;
         const heading = document.createElement("summary");
-        heading.className = "used-by-heading";
         const name = document.createElement("span");
-        name.textContent = direction;
+        name.textContent = label;
         const badge = document.createElement("span");
         badge.className = "rg4-group-count";
         badge.textContent = String(count);
         heading.append(name, badge);
         section.appendChild(heading);
-        container.appendChild(section);
-        dependencySections.set(direction, section);
+        return section;
     }
 
-    rows
-        .slice(
-            0,
-            25
-        )
-        .forEach(
-            function (item) {
+    for (const direction of ["Used By", "Depends On"]) {
+        const directionRows = rows.filter(item => item.direction === direction);
+        if (!directionRows.length) continue;
+        const section = createSection(direction, directionRows.length,
+            "rg4-reference-group rg4-dependency-group", true);
+        container.appendChild(section);
 
-                const identity =
-                    rgResolveDependencyIdentity(
-                        item.objectId,
-                        item.componentType,
-                        explorerData
-                    );
+        for (const group of groups) {
+            const items = directionRows.filter(item => group.types.length
+                ? group.types.includes(Number(item.componentType))
+                : !knownTypes.has(Number(item.componentType)));
+            if (!items.length) continue;
+            const typeSection = createSection(group.name, items.length,
+                "rg4-reference-group rg41-dependency-type", false);
+            section.appendChild(typeSection);
 
-
-                const row =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                row.className =
-                    "rg-dependency-item";
-
-
-                const primaryText =
-                    identity?.name ||
-                    rgComponentTypeName(
-                        item.componentType
-                    );
-
-
-                const typeText =
-                    rgComponentTypeName(
-                        item.componentType
-                    );
-
-
-                const contextText =
-                    identity?.context ||
-                    "";
-
-
+            for (const item of items) {
+                const identity = rgResolveDependencyIdentity(
+                    item.objectId, item.componentType, explorerData);
+                const typeText = rgComponentTypeName(item.componentType);
+                const row = document.createElement("div");
+                row.className = "rg-dependency-item";
+                const primaryText = identity?.name || `Unresolved ${typeText}`;
+                const context = [identity?.context, rgDependencyTypeName(item.dependencyType)]
+                    .filter(Boolean).join(" • ");
                 row.innerHTML = `
-
-                    <div>
-
-                        <strong>
-                            ${rgEscapeHtml(
-                                item.direction
-                            )}
-                        </strong>
-
-                        <span>
-                            ${rgEscapeHtml(
-                                primaryText
-                            )}
-                        </span>
-
-                    </div>
-
-                    <small>
-                        ${rgEscapeHtml(
-                            [
-                                identity?.name
-                                    ? typeText
-                                    : null,
-
-                                contextText ||
-                                    null,
-
-                                rgDependencyTypeName(
-                                    item.dependencyType
-                                )
-                            ]
-                                .filter(Boolean)
-                                .join(" • ")
-                        )}
-                    </small>
-
-                    ${item.objectId &&
-                        !rg25IsZeroGuid(
-                            item.objectId
-                        )
-                            ? `
-                                <details class="rg-dependency-technical">
-
-                                    <summary>
-                                        Technical details
-                                    </summary>
-
-                                    <code>
-                                        ${rgEscapeHtml(
-                                            item.objectId
-                                        )}
-                                    </code>
-
-                                </details>
-                            `
-                            : ""
-                    }
+                    <span class="rg41-dependency-name">${rgEscapeHtml(primaryText)}</span>
+                    <small>${rgEscapeHtml(context)}</small>
+                    <details class="rg-dependency-technical">
+                        <summary>Technical details</summary>
+                        <dl>
+                            <dt>Component type</dt>
+                            <dd>${rgEscapeHtml(typeText)} (${rgEscapeHtml(item.componentType)})</dd>
+                            <dt>Component ID</dt>
+                            <dd><code>${rgEscapeHtml(item.objectId || "Not provided")}</code></dd>
+                        </dl>
+                    </details>
                 `;
-
-
-                (dependencySections.get(item.direction) || container).appendChild(row);
+                typeSection.appendChild(row);
             }
-        );
-
-
-    if (
-        rows.length >
-        25
-    ) {
-
-        const remaining =
-            document.createElement(
-                "div"
-            );
-
-
-        remaining.className =
-            "rg-more-results";
-
-
-        remaining.textContent =
-            `+ ${rows.length - 25} more dependencies`;
-
-
-        container.appendChild(
-            remaining
-        );
+        }
     }
 }
 
