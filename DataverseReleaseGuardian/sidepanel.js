@@ -756,8 +756,9 @@ async function sendDynamicsMessage(
         }
 
 
-        const tab =
-            tabs[0];
+        const tab = typeof rgWorkflow !== "undefined" && rgWorkflow.sourceTabId
+            ? await chrome.tabs.get(rgWorkflow.sourceTabId)
+            : tabs[0];
 
 
         if (
@@ -865,7 +866,7 @@ async function testDataverseConnection() {
     }
 
 
-    sendDynamicsMessage(
+    return new Promise(resolve => sendDynamicsMessage(
         {
             action:
                 "whoAmI"
@@ -883,6 +884,7 @@ async function testDataverseConnection() {
                         `Failed (${response?.status || "Unknown"})`;
                 }
 
+                resolve(false);
                 return;
             }
 
@@ -906,6 +908,7 @@ async function testDataverseConnection() {
                 response.data?.OrganizationId ||
                 "-"
             );
+            resolve(true);
         },
 
         function (message) {
@@ -916,8 +919,9 @@ async function testDataverseConnection() {
                     message ||
                     "Content script unavailable.";
             }
+            resolve(false);
         }
-    );
+    ));
 }
 
 
@@ -926,6 +930,7 @@ async function testDataverseConnection() {
 // ============================================================
 
 async function loadSolutions() {
+    if (typeof rgWorkflow !== "undefined" && rgWorkflow.initialized) rgWorkflow.resetAnalysis();
 
     const status =
         document.getElementById(
@@ -956,7 +961,7 @@ async function loadSolutions() {
     resetSolutionState();
 
 
-    sendDynamicsMessage(
+    return new Promise(resolve => sendDynamicsMessage(
         {
             action:
                 "getSolutions"
@@ -974,6 +979,7 @@ async function loadSolutions() {
                         `Failed (${response?.status || "Unknown"})`;
                 }
 
+                resolve(false);
                 return;
             }
 
@@ -1013,6 +1019,7 @@ async function loadSolutions() {
                 status.textContent =
                     `${loadedSolutions.length} solutions found`;
             }
+            resolve(true);
         },
 
         function (message) {
@@ -1023,8 +1030,9 @@ async function loadSolutions() {
                     message ||
                     "Unable to communicate with Dynamics.";
             }
+            resolve(false);
         }
-    );
+    ));
 }
 
 
@@ -1047,6 +1055,8 @@ function solutionChanged() {
             }
         );
 
+
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.resetAnalysis();
 
     resetAnalysisState();
 
@@ -1138,6 +1148,8 @@ async function analyzeSelectedSolution() {
     }
 
 
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.analysisStarted(solutionId);
+
     const card =
         document.getElementById(
             "analysisCard"
@@ -1178,6 +1190,7 @@ async function analyzeSelectedSolution() {
         },
 
         function (response) {
+            if (document.getElementById("solutionSelect")?.value !== solutionId) return;
 
             if (
                 !response?.success
@@ -1189,6 +1202,7 @@ async function analyzeSelectedSolution() {
                         `Analysis failed (${response?.status || "Unknown"})`;
                 }
 
+                if (typeof rgWorkflow !== "undefined") rgWorkflow.analysisFinished(solutionId, false);
                 return;
             }
 
@@ -1204,6 +1218,9 @@ async function analyzeSelectedSolution() {
                 analyzedComponents
             );
 
+
+            rgShowScreen("solution");
+            if (typeof rgWorkflow !== "undefined") rgWorkflow.analysisFinished(solutionId, true);
 
             setTimeout(
                 function () {
@@ -1227,6 +1244,8 @@ async function analyzeSelectedSolution() {
         },
 
         function (message) {
+            if (document.getElementById("solutionSelect")?.value !== solutionId) return;
+            if (typeof rgWorkflow !== "undefined") rgWorkflow.analysisFinished(solutionId, false);
 
             if (status) {
 
@@ -7015,6 +7034,8 @@ function rgCreateColumnDependencyPanel() {
 // ============================================================
 
 function rgAnalyzeSolutionReadiness() {
+    const analysisVersion = typeof rgWorkflow !== "undefined" ? rgWorkflow.analysisVersion : 0;
+
 
     const select =
         document.getElementById(
@@ -7090,6 +7111,9 @@ function rgAnalyzeSolutionReadiness() {
         },
 
         function (response) {
+            if (document.getElementById("solutionSelect")?.value !== solution.solutionid ||
+                typeof rgWorkflow !== "undefined" && rgWorkflow.analysisVersion !== analysisVersion) return;
+            if (typeof rgWorkflow !== "undefined") rgWorkflow.sourceChecked(!!response?.success);
 
             if (
                 !response?.success
@@ -7229,6 +7253,9 @@ function rgAnalyzeSolutionReadiness() {
         },
 
         function (message) {
+            if (document.getElementById("solutionSelect")?.value !== solution.solutionid ||
+                typeof rgWorkflow !== "undefined" && rgWorkflow.analysisVersion !== analysisVersion) return;
+            if (typeof rgWorkflow !== "undefined") rgWorkflow.sourceChecked(false);
 
             setText(
                 "rgDependencyStatus",
@@ -7616,6 +7643,8 @@ function rgUpdateReadinessSummary(
     result
 ) {
 
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.readinessUpdated();
+
     setText(
         "rgReadinessScore",
         result.score
@@ -7702,7 +7731,7 @@ function rgRenderReadinessDependencies() {
         records = records.filter(item => item.targetStatus === "satisfied");
     }
     else if (rgDependencyFilter === "external") {
-        records = records.filter(item => item.targetStatus === "verification");
+        records = records.filter(item => !item.targetStatus || item.targetStatus === "verification");
     }
 
     if (!records.length) {
@@ -7755,9 +7784,8 @@ function rgInitializeAppNavigation() {
 
     rgMoveExistingSectionsIntoScreens();
 
-    rgShowScreen(
-        "home"
-    );
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.initialize();
+    rgShowScreen("home");
 }
 
 
@@ -8148,6 +8176,7 @@ function rgShowScreen(
     screenName
 ) {
 
+    if (typeof rgWorkflow !== "undefined" && !rgWorkflow.canOpen(screenName)) screenName = "home";
     rgCurrentScreen =
         screenName;
 
@@ -8186,6 +8215,7 @@ function rgShowScreen(
         );
 
 
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.screenChanged(screenName);
     window.scrollTo({
         top: 0,
         behavior: "instant"
@@ -10481,6 +10511,8 @@ function rg25RebindSolutionSummary() {
         rg25ShowChoices,
         "Explore Choices"
     );
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.compactOverview();
+
 }
 
 
@@ -10603,6 +10635,8 @@ function rg25AddExplorerShortcuts() {
                     );
             }
         );
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.compactOverview();
+
 }
 
 
@@ -13016,6 +13050,10 @@ async function rg282UpdateSourceSolution() {
             });
 
 
+        if (typeof rgWorkflow !== "undefined" && rgWorkflow.sourceTabId) {
+            tabs[0] = await chrome.tabs.get(rgWorkflow.sourceTabId);
+        }
+
         if (
             tabs[0]?.url
         ) {
@@ -13149,6 +13187,8 @@ async function rg28RefreshTargetTabs() {
     }
 
 
+    if (typeof rgWorkflow !== "undefined" && rgWorkflow.sourceTabId) activeTabId = rgWorkflow.sourceTabId;
+
     dynamicsTabs
         .filter(
             tab =>
@@ -13278,6 +13318,7 @@ function rg282TargetTabChanged(
     }
 
 
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.targetChanged();
     rg282UpdateCompareButton();
 }
 
@@ -13343,6 +13384,8 @@ function rg28VerifyTargetAndLoadSolutions() {
     }
 
 
+    const targetTabId = rg28TargetTabId;
+    const targetVersion = typeof rgWorkflow !== "undefined" ? rgWorkflow.contextRevision : 0;
     rg28SetStatus(
         "Verifying target environment...",
         "loading"
@@ -13358,6 +13401,8 @@ function rg28VerifyTargetAndLoadSolutions() {
         },
 
         function (whoResponse) {
+            if (rg28TargetTabId !== targetTabId ||
+                typeof rgWorkflow !== "undefined" && rgWorkflow.contextRevision !== targetVersion) return;
 
             if (
                 !whoResponse?.success
@@ -13387,6 +13432,8 @@ function rg28VerifyTargetAndLoadSolutions() {
                 },
 
                 function (response) {
+                    if (rg28TargetTabId !== targetTabId ||
+                        typeof rgWorkflow !== "undefined" && rgWorkflow.contextRevision !== targetVersion) return;
 
                     if (
                         !response?.success
@@ -13415,6 +13462,8 @@ function rg28VerifyTargetAndLoadSolutions() {
                 },
 
                 function (message) {
+                    if (rg28TargetTabId !== targetTabId ||
+                        typeof rgWorkflow !== "undefined" && rgWorkflow.contextRevision !== targetVersion) return;
 
                     rg28SetStatus(
                         message,
@@ -13425,6 +13474,8 @@ function rg28VerifyTargetAndLoadSolutions() {
         },
 
         function (message) {
+            if (rg28TargetTabId !== targetTabId ||
+                typeof rgWorkflow !== "undefined" && rgWorkflow.contextRevision !== targetVersion) return;
 
             rg28SetStatus(
                 message,
@@ -13559,6 +13610,8 @@ function rg282TargetSolutionChanged(
         null;
 
 
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.invalidateTarget();
+
     const selected =
         rg28TargetSolutions.find(
             solution =>
@@ -13660,7 +13713,8 @@ function rg282UpdateCompareButton() {
             rg282GetSourceSolution() &&
             analyzedComponents.length &&
             rg28TargetTabId &&
-            rg28TargetSolutionId
+            rg28TargetSolutionId &&
+            (typeof rgWorkflow === "undefined" || rgWorkflow.sourceReady && !rgWorkflow.targetBusy)
         );
 }
 
@@ -13685,6 +13739,11 @@ function rg282CompareAndRunPreflight() {
     }
 
 
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.invalidateTarget();
+    const contextKey = () => typeof rgWorkflow !== "undefined" ? rgWorkflow.contextKey()
+        : `${rg282GetSourceSolution()?.solutionid}:${rg28TargetTabId}:${rg28TargetSolutionId}`;
+    const context = contextKey();
+    const isCurrent = () => context === contextKey();
     rg28SetStatus(
         "Loading target solution components...",
         "loading"
@@ -13703,6 +13762,7 @@ function rg282CompareAndRunPreflight() {
         },
 
         function (response) {
+            if (!isCurrent()) return;
 
             if (
                 !response?.success
@@ -13736,6 +13796,7 @@ function rg282CompareAndRunPreflight() {
         },
 
         function (message) {
+            if (!isCurrent()) return;
 
             rg28SetStatus(
                 message,
@@ -14085,6 +14146,11 @@ function rg282ComparisonRow(
 async function rg282RunDependencyCoverage(
     sourceSolution
 ) {
+    const contextKey = () => typeof rgWorkflow !== "undefined" ? rgWorkflow.contextKey()
+        : `${rg282GetSourceSolution()?.solutionid}:${rg28TargetTabId}:${rg28TargetSolutionId}`;
+    const context = contextKey();
+    const isCurrent = () => context === contextKey();
+
 
     rg28SetStatus(
         "Solution comparison complete. Resolving source dependency identities...",
@@ -14098,6 +14164,7 @@ async function rg282RunDependencyCoverage(
             await rg25LoadExplorerData();
     }
     catch (error) {
+        if (!isCurrent()) return;
         rg28SetStatus(
             `Source deployment metadata could not be loaded: ${error?.message || String(error)}`,
             "warning"
@@ -14123,12 +14190,15 @@ async function rg282RunDependencyCoverage(
                 })
             );
 
+    if (!isCurrent()) return;
+
     sendDynamicsMessage(
         {
             action: "resolveDependencyIdentities",
             dependencies: sourceDependencies
         },
         function (identityResponse) {
+            if (!isCurrent()) return;
 
             if (!identityResponse?.success) {
                 rg28SetStatus(
@@ -14163,6 +14233,7 @@ async function rg282RunDependencyCoverage(
                         sourceExplorerData.pluginAssemblies || []
                 },
                 function (response) {
+                    if (!isCurrent()) return;
 
                     if (!response?.success) {
                         rg28SetStatus(
@@ -14201,6 +14272,7 @@ async function rg282RunDependencyCoverage(
                     );
                 },
                 function (message) {
+                    if (!isCurrent()) return;
                     rg28SetStatus(
                         message,
                         "warning"
@@ -14209,6 +14281,7 @@ async function rg282RunDependencyCoverage(
             );
         },
         function (message) {
+            if (!isCurrent()) return;
             rg28SetStatus(
                 message || "Source dependency identity resolution failed.",
                 "warning"
@@ -14546,17 +14619,13 @@ function rg282RenderDependencyComparison(
                     </span>
 
                     <h3>
-                        Can this solution deploy safely?
+                        Target check results
                     </h3>
 
                     <p class="rg282-section-explainer">
-                        Verifies required prerequisites across the entire target environment,
-                        even when they are supplied by another solution or use different IDs.
+                        Prerequisites checked across the destination environment.
                     </p>
-                    <p class="rg282-section-explainer rg282-coverage-note">
-                        Coverage shows how much Release Guardian could verify conclusively.
-                        READY / REVIEW / BLOCKED is based on the findings themselves.
-                    </p>
+
 
                 </div>
 
@@ -14567,15 +14636,15 @@ function rg282RenderDependencyComparison(
                 ? "rg28-blocked"
                 : "rg28-warning"
         }">
-                    ${comparison.verdict}
+                    ${comparison.verdict === "WARNING" ? "REVIEW" : comparison.verdict}
                 </span>
 
             </div>
 
             <div class="rg282-readiness-hero">
                 <div class="rg282-score-ring">
-                    <strong>${coverage}</strong>
-                    <span>/ 100 coverage</span>
+                    <span>Verification coverage</span>
+                    <strong>${coverage}%</strong>
                 </div>
                 <div class="rg282-primary-metrics">
                     ${rg28Metric("Verified", satisfied, "success")}
@@ -14587,8 +14656,12 @@ function rg282RenderDependencyComparison(
 
             <details class="rg282-analysis-details">
                 <summary>
-                    View analysis details
+                    How this result was calculated
                 </summary>
+                <p class="rg282-section-explainer rg282-coverage-note">
+                    Coverage measures conclusive checks, including confirmed missing prerequisites.
+                    It is not a deployment guarantee. Unresolved components still require review.
+                </p>
 
                 <div class="rg28-result-grid rg282-detail-metrics">
                     ${rg28Metric("Dependencies Checked", comparison.total)}
@@ -15081,6 +15154,8 @@ function rg28SetStatus(
     message,
     tone = "default"
 ) {
+    if (typeof rgWorkflow !== "undefined") rgWorkflow.targetStatus(message, tone);
+
 
     const element =
         document.getElementById(
@@ -15107,6 +15182,7 @@ function rg28SetStatus(
 // ============================================================
 
 function rgApplyPremiumVisualLayout() {
+    if (typeof rgWorkflow !== "undefined" && rgWorkflow.initialized) return;
 
     rgDecorateHomeCards();
 
@@ -15954,6 +16030,7 @@ function rgUpgradeSolutionReadinessShortcut() {
 
 
 function rgApplySolutionPagePremiumUI() {
+    if (typeof rgWorkflow !== "undefined" && rgWorkflow.initialized) return;
 
     rgDecorateDeploymentComponents();
 
