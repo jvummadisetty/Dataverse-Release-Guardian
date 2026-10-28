@@ -34,7 +34,7 @@ async function getReleaseDiffSnapshot(request) {
         const components=inventory.components || [];
         const members=new Map();
         components.forEach(component=>{
-            const family=supported[Number(component.componenttype)];
+            const family=supported[Number(component.inventoryComponentType ?? component.componenttype)];
             if(!family) {
                 const type=Number(component.componenttype);
                 snapshot.unsupported[type]=(snapshot.unsupported[type]||0)+1;
@@ -158,7 +158,7 @@ async function getReleaseDiffSnapshot(request) {
             {family:'security role',set:'roles',id:'roleid',fields:'roleid,name',name:'name'}
         ];
         await parallel(specs,async spec=>{
-            const ids=[...members.values()].filter(item=>supported[Number(item.componenttype)]===spec.family).map(item=>guid(item.objectid));
+            const ids=[...members.values()].filter(item=>supported[Number(item.inventoryComponentType ?? item.componenttype)]===spec.family).map(item=>guid(item.objectid));
             if(!ids.length)return;
             try {
                 for(const row of await byIds(spec.set,spec.id,ids,spec.fields)) {
@@ -190,7 +190,7 @@ async function getReleaseDiffSnapshot(request) {
             }catch(_){issue(spec.family,`${spec.family} definitions could not be read.`);}
         });
         for(const [key,component] of members)if(!records.has(key)) {
-            const family=supported[Number(component.componenttype)];issue(family,'A packaged component identity or definition was not returned.');
+            const family=supported[Number(component.inventoryComponentType ?? component.componenttype)];issue(family,'A packaged component identity or definition was not returned.');
             add({family,id:guid(component.objectid),key:null,name:`Unresolved ${family}`,table:'',membership:'explicit',definition:{complete:false,fingerprints:{},missing:['Metadata not returned'],issues:[{code:'metadata_unavailable'}]}});
         }
         snapshot.components=[...records.values()];
