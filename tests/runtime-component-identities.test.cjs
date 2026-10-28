@@ -196,3 +196,26 @@ test('basic metadata fallback resolves names when key expansion is unavailable',
     assert.equal(record.identity.displayName,'Visible name');
     assert.equal(record.identity.alternateKey,null);
 });
+
+test('metadata-confirmed runtime connection references use logical names across GUID and type-code changes',async()=>{
+    const source=harness();source.add(10080,'connectionreference',{key:false});
+    source.records.get('connectionreferences').push({connectionreferenceid:guid(1),name:'Dataverse',connectionreferencelogicalname:'org_dataverse',connectorid:'shared_commondataserviceforapps'});
+    const resolved=(await source.resolve([item(10080,1)])).dependencies;
+    assert.equal(resolved[0].identity.kind,'connectionreference');
+    const target=harness();target.add(10888,'connectionreference',{key:false});
+    target.records.get('connectionreferences').push({connectionreferenceid:guid(9),name:'Another label',connectionreferencelogicalname:'org_dataverse',connectorid:'shared_commondataserviceforapps'});
+    const result=await target.match(resolved);
+    assert.equal(result.matches.length,1);assert.equal(result.matches[0].componentType,10888);
+    target.records.get('connectionreferences')[0].connectorid='other';
+    const mismatch=await target.match(resolved);assert.equal(mismatch.matches.length,0);assert.equal(mismatch.safeMissingIdentityKeys.length,0);
+});
+
+test('inventory family annotations preserve actual types and require an unambiguous metadata mapping',async()=>{
+    const h=harness();h.add(10080,'connectionreference');h.add(10081,'unrelated');
+    const rows=[{componenttype:10080,objectid:guid(1)},{componenttype:10081,objectid:guid(2)}];
+    await h.ctx.rgAnnotateInventoryTypes(rows);
+    assert.equal(rows[0].inventoryComponentType,371);assert.equal(rows[0].componenttype,10080);
+    assert.equal(rows[1].inventoryComponentType,undefined);
+    h.denied.set('EntityDefinitions',403);const denied=[{componenttype:10080}];
+    await h.ctx.rgAnnotateInventoryTypes(denied);assert.equal(denied[0].inventoryComponentType,undefined);
+});

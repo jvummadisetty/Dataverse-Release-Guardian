@@ -8347,7 +8347,7 @@ function rg25GetComponentIds(
             function (component) {
 
                 return (
-                    component.componenttype ===
+                    Number(component.inventoryComponentType ?? component.componenttype) ===
                     componentType
                 );
             }

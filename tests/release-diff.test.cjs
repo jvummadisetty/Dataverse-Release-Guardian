@@ -203,3 +203,12 @@ test('flow JSON and schema connection references compare; malformed or denied de
     assert.equal(partial.components.find(row=>row.family==='process').definition.complete,false);
     assert.equal(h.ctx.diff.compare(source,partial).sourceOnly.length,0);
 });
+
+test('metadata-annotated runtime references join the connection-reference family without changing actual types',async()=>{
+    const h=collector();h.inventory.push({componenttype:10080,inventoryComponentType:371,objectid:guid(94)});
+    const original=h.ctx.dataverseFetch;
+    h.ctx.dataverseFetch=async url=>url.includes('/connectionreferences?')?{value:[{connectionreferenceid:guid(94),connectionreferencelogicalname:'org_ref',connectionreferencedisplayname:'Dataverse',connectorid:'shared_dataverse'}]}:original(url);
+    const snapshot=await h.run();const ref=snapshot.components.find(row=>row.id===guid(94));
+    assert.equal(ref.family,'connection reference');assert.equal(ref.definition.complete,true);
+    assert.equal(h.inventory.at(-1).componenttype,10080);
+});

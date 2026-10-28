@@ -384,6 +384,8 @@ async function getSolutionComponents(
             );
 
 
+        await rgAnnotateInventoryTypes(normalizedComponents);
+
         return {
 
             success:
@@ -415,6 +417,23 @@ async function getSolutionComponents(
     }
 }
 
+
+// Preserve the real dependency component code; annotate only metadata-confirmed UI families.
+async function rgAnnotateInventoryTypes(components) {
+    const types=[...new Set(components.map(row=>Number(row.componenttype)).filter(type=>type>=10000))];
+    for(const chunk of rg28Chunk(types,16)) {
+        try {
+            const metas=await fetchAllPages(`${window.location.origin}/api/data/v9.2/EntityDefinitions?$select=ObjectTypeCode,LogicalName,EntitySetName,PrimaryIdAttribute&$filter=${encodeURIComponent(chunk.map(type=>`ObjectTypeCode eq ${type}`).join(' or '))}`);
+            for(const type of chunk) {
+                const candidates=metas.filter(meta=>Number(meta.ObjectTypeCode)===type);
+                if(candidates.length!==1)continue;
+                const meta=candidates[0];
+                if(meta.LogicalName!=='connectionreference'||meta.EntitySetName!=='connectionreferences'||meta.PrimaryIdAttribute!=='connectionreferenceid')continue;
+                for(const row of components)if(Number(row.componenttype)===type)row.inventoryComponentType=371;
+            }
+        }catch(_) { /* Unavailable metadata must never guess a family. */ }
+    }
+}
 
 // ============================================================
 // MISSING SOLUTION DEPENDENCIES
@@ -3720,7 +3739,8 @@ async function rgDepResolveRuntimeIdentities(items, resultMap, diagnostics = new
         }
         const fields = [...new Set([meta.PrimaryIdAttribute,
             ...(rgRuntimeName(meta.PrimaryNameAttribute) ? [meta.PrimaryNameAttribute] : []),
-            ...rgRuntimeKeys(meta).flatMap(keyFields => keyFields.map(field => field.name))])];
+            ...rgRuntimeKeys(meta).flatMap(keyFields => keyFields.map(field => field.name)),
+            ...(registered && meta.LogicalName === "connectionreference" ? ["connectionreferencelogicalname", "connectorid"] : [])])];
         for (const chunk of rg28Chunk(group, 16)) {
             try {
                 const rows = await rgDepFetchByIds(meta.EntitySetName, meta.PrimaryIdAttribute, chunk.map(item => safeIds.get(key(item))), fields.join(","));
@@ -3731,6 +3751,12 @@ async function rgDepResolveRuntimeIdentities(items, resultMap, diagnostics = new
                         continue;
                     }
                     const row = matches[0];
+                    if (registered && meta.LogicalName === "connectionreference" && meta.EntitySetName === "connectionreferences" && meta.PrimaryIdAttribute === "connectionreferenceid" && row.connectionreferencelogicalname) {
+                        rgDepSetIdentity(resultMap,item,{kind:"connectionreference",logicalName:row.connectionreferencelogicalname,
+                            displayName:row[meta.PrimaryNameAttribute]||null,connectorId:row.connectorid,confidence:"high",confirmMissingSafe:false});
+                        diagnostics.delete(key(item));
+                        continue;
+                    }
                     rgDepSetIdentity(resultMap, item, {
                         kind: "runtimeRecord", tableLogicalName: meta.LogicalName,
                         componentTypeLabel: rgRuntimeLabel(meta), displayName: row[meta.PrimaryNameAttribute] || null,
@@ -4013,10 +4039,21 @@ async function rgDepMatchTargetEntitySets(identities, matches, checkInfo) {
             try {
                 const rows = await fetchAllPages(`${window.location.origin}/api/data/v9.2/${spec.set}?$select=${spec.select}&$filter=${encodeURIComponent(spec.buildFilter(item.identity))}`);
                 checkInfo.set(item.identityKey, { matchCount: rows.length });
+                if (spec.kind === "connectionreference" && rows.length === 1 && item.identity.connectorId &&
+                    rows[0].connectorid !== item.identity.connectorId) {
+                    checkInfo.set(item.identityKey,{diagnostic:"The logical name matches, but the connector differs. Review the target connection reference."});
+                    continue;
+                }
                 if (rows.length === 1) {
+                    let targetType=Number(item.componentType);
+                    if(spec.kind === "connectionreference" && targetType >= 10000) {
+                        const meta=await dataverseFetch(`${window.location.origin}/api/data/v9.2/EntityDefinitions(LogicalName='connectionreference')?$select=ObjectTypeCode,LogicalName`);
+                        if(meta.LogicalName !== "connectionreference" || !Number.isInteger(meta.ObjectTypeCode))continue;
+                        targetType=meta.ObjectTypeCode;
+                    }
                     matches.set(item.identityKey, {
                         objectId: rows[0][spec.id],
-                        componentType: Number(item.componentType),
+                        componentType: targetType,
                         matchType: "stableIdentity"
                     });
                 }
