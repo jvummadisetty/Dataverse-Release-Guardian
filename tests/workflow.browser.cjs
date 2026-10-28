@@ -193,6 +193,18 @@ async function mockChrome() {
         await page.locator('[data-rg-dependency-filter="blocking"]').click();
         assert.equal(await page.locator('.rg282-human-dependency').count(), 0);
         assert.ok((await page.locator('#rgDependencyList').innerText()).includes('No prerequisites'));
+        // Runtime-resolved names do not imply target verification by themselves.
+        await page.evaluate(() => {
+            const unresolved = rg28LastComparison.needsVerification[0];
+            unresolved.identity = { kind: 'runtimeRecord', displayName: 'Case routing rule', tableLogicalName: 'custom_rule', componentTypeLabel: 'Routing rules', confirmMissingSafe: false };
+            unresolved.verificationReason = 'The source record ID was not found, and no matching active unique key is available in the target.';
+            rg282RenderDependencyComparison(rg28LastComparison);
+        });
+        await page.locator('.rg-flow-finding > summary').first().click();
+        assert.ok((await page.locator('.rg-flow-finding').first().innerText()).includes('Case routing rule'));
+        assert.ok((await page.locator('.rg-flow-finding').first().innerText()).includes('Routing rules'));
+        assert.ok((await page.locator('.rg-flow-finding').first().innerText()).includes('no matching active unique key'));
+        assert.equal(await page.locator('[data-rg-dependency-filter="external"]').innerText(), 'Not verified (9)');
         await page.setViewportSize({ width: 360, height: 900 });
         await page.locator('#rgFlowTargetSetup > summary').click();
         await page.selectOption('#rg28TargetTabSelect', '3');
