@@ -12,19 +12,36 @@ async function mockChrome() {
         { id: 2, url: 'https://uat.crm.dynamics.com/main.aspx', title: 'Dynamics UAT' },
         { id: 3, url: 'https://prod.crm.dynamics.com/main.aspx', title: 'Dynamics PROD' }
     ];
-    window.fixture = { activeTab: 1, calls: [], failConnection: false, failAnalysis: false, failSource: false, failTarget: false, delayTarget: 0, pendingAnalysis: false, targetOutcome: "verified" };
+    window.fixture = { activeTab: 1, calls: [], failConnection: false, failAnalysis: false, failSource: false, failTarget: false, delayTarget: 0, pendingAnalysis: false, targetOutcome: "verified", failDiff: false, delayDiff: 0 };
     window.chrome = {
-        runtime: { lastError: null },
+        runtime: { lastError: null, onMessage: { addListener() {} } },
         tabs: {
             query: async query => query.active ? [tabs.find(tab => tab.id === fixture.activeTab)] : tabs,
             get: async tabId => tabs.find(tab => tab.id === tabId),
             sendMessage: (tabId, request, callback) => {
                 fixture.calls.push({ tabId, ...request });
                 let response = { success: true };
+                if (request.action === 'getReleaseDiffSnapshot') {
+                    const target=tabId!==1;
+                    const definition=(field,value,complete=true)=>({complete,fingerprints:{[field]:String(value)},previews:{[field]:String(value)},missing:complete?[]:['XML unavailable']});
+                    const record=(family,key,n,field,value)=>({family,key,id:id(n),name:family==='form'?'Main <form>':`${family} definition`,table:'account',membership:'explicit',definition:definition(field,value)});
+                    response=fixture.failDiff&&target?{success:false,error:'Target snapshot denied'}:{
+                        success:true,schemaVersion:1,environment:{host:target?'uat.crm.dynamics.com':'dev.crm.dynamics.com'},
+                        solution:{solutionid:request.solutionId,uniquename:'CareManagement',version:target?'1.22.0.44':'1.22.0.45'},
+                        coverage:{table:true,column:true,form:true,view:true},unsupported:{29:3},diagnostics:[],components:[
+                            record('table','table:account',target?120:20,'Setting','same'),
+                            record('column','column:account:name',target?121:21,'MaxLength',target?200:100),
+                            record('form','form:account:main:2',target?122:22,'FormXML','same XML'),
+                            record('view',`viewid:${id(23)}`,23,'FetchXML',target?'target XML':'source XML'),
+                            target?record('column','column:account:target_only',41,'Setting','target'):record('column','column:account:source_only',40,'Setting','source'),
+                            {...record('form','form:account:unavailable:2',target?125:25,'FormXML','missing'),definition:definition('FormXML','missing',false)}
+                        ]
+                    };
+                }
                 if (request.action === 'whoAmI') response = fixture.failConnection || tabId !== 1 && fixture.failTarget
                     ? { success: false, status: 403 } : { success: true, data: { UserId: id(10), OrganizationId: id(11) } };
                 if (request.action === 'getSolutions') response = { success: true, solutions: [
-                    { solutionid: id(tabId === 1 ? 1 : 3), uniquename: 'CareManagement', friendlyname: 'Care Management', version: '1.22.0.45', ismanaged: false },
+                    { solutionid: id(tabId === 1 ? 1 : 3), uniquename: 'CareManagement', friendlyname: 'Care Management', version: tabId === 1 ? '1.22.0.45' : '1.22.0.44', ismanaged: false },
                     { solutionid: id(2), uniquename: 'OtherSolution', friendlyname: 'Other Solution', version: '1.0.0.0', ismanaged: true }
                 ] };
                 if (request.action === 'getSolutionComponents') response = fixture.failAnalysis ? { success: false, status: 500 } : {
@@ -49,7 +66,7 @@ async function mockChrome() {
                     fixture.completeAnalysis = () => callback(response);
                     return;
                 }
-                const delay = tabId !== 1 ? fixture.delayTarget : 0;
+                const delay = request.action === 'getReleaseDiffSnapshot' ? fixture.delayDiff : tabId !== 1 ? fixture.delayTarget : 0;
                 setTimeout(() => callback(response), delay);
             }
         }
@@ -59,7 +76,8 @@ async function mockChrome() {
     const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
     const server = http.createServer((request, response) => {
         const name = new URL(request.url, 'http://localhost').pathname.slice(1);
-        if (!['sidepanel.html', 'sidepanel.js', 'workflow.js', 'styles.css', 'workflow.css'].includes(name)) { response.writeHead(404).end(); return; }
+        if(name==='snapshot-fixture.html'){response.setHeader('Content-Type','text/html');response.end('<!doctype html><title>Snapshot fixture</title>');return;}
+        if (!['sidepanel.html', 'sidepanel.js', 'workflow.js', 'styles.css', 'workflow.css', 'release-diff.js', 'release-diff-ui.js', 'content.js', 'release-diff-content.js'].includes(name)) { response.writeHead(404).end(); return; }
         response.setHeader('Content-Type', name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : 'text/html');
         response.end(fs.readFileSync(path.join(__dirname, '../DataverseReleaseGuardian', name)));
     });
@@ -132,6 +150,61 @@ async function mockChrome() {
         assert.ok(await page.evaluate(() => fixture.calls.filter(call => ['resolveDependencyIdentities', 'getSolutionExplorerData'].includes(call.action)).every(call => call.tabId === 1)));
         await page.evaluate(() => window.scrollTo(0,0));
         await page.screenshot({ path: '/tmp/guardian-result.png', fullPage: true });
+        // Release Diff has independent results and never changes the readiness verdict.
+        const readinessBefore=await page.evaluate(()=>JSON.stringify(rg28LastComparison));
+        await page.click('[data-rg-screen="diff"]');
+        await page.click('#rgReleaseRun');
+        await page.waitForFunction(()=>!!rgReleaseDiffUI.result);
+        assert.equal(await page.locator('[data-release-filter="matched"] strong').innerText(),'5');
+        assert.equal(await page.locator('[data-release-filter="changed"] strong').innerText(),'2');
+        assert.equal(await page.locator('[data-release-filter="sourceOnly"] strong').innerText(),'1');
+        assert.equal(await page.locator('[data-release-filter="targetOnly"] strong').innerText(),'1');
+        assert.equal(await page.locator('[data-release-filter="notCompared"] strong').innerText(),'1');
+        const direction=await page.locator('#rgReleaseDirection').innerText();
+        assert.ok(direction.includes('dev.crm.dynamics.com · v1.22.0.45 → uat.crm.dynamics.com · v1.22.0.44'));
+        assert.equal(await page.evaluate(()=>JSON.stringify(rg28LastComparison)),readinessBefore);
+        await page.locator('.rg-release-row > summary').first().click();
+        assert.ok((await page.locator('.rg-release-row-body').first().innerText()).includes('MaxLength'));
+        assert.ok((await page.locator('.rg-release-row-body').first().innerText()).includes('Target: 200'));
+        for(const filter of ['matched','sourceOnly','targetOnly','notCompared','changed']) {
+            await page.click(`[data-release-filter="${filter}"]`);
+            assert.ok(await page.locator('.rg-release-row').count()>0);
+        }
+        // Real browser XML canonicalization, not a fixture hash.
+        const xmlChecks=await page.evaluate(async()=>{
+            const def=value=>RGReleaseDiff.definition({FormXML:value},['FormXML'],['FormXML']);
+            const a=await def('<form b="2" a="1"><cell name="x" /></form>');
+            const b=await def('<form a="1" b="2">\n<!-- formatting --><cell name="x"/></form>');
+            const c=await def('<form a="1" b="2"><cell name="y"/></form>');
+            const invalid=await def('<form>');
+            return {same:a.fingerprints.FormXML===b.fingerprints.FormXML,changed:a.fingerprints.FormXML!==c.fingerprints.FormXML,incomplete:!invalid.complete};
+        });
+        assert.deepEqual(xmlChecks,{same:true,changed:true,incomplete:true});
+        for(const width of [320,420,700]) {
+            await page.setViewportSize({width,height:900});
+            assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Release Diff overflows at ${width}px`);
+        }
+        await page.evaluate(()=>window.scrollTo(0,0));
+        await page.screenshot({path:'/tmp/guardian-release-diff.png',fullPage:true});
+        await page.evaluate(()=>fixture.failDiff=true);
+        await page.click('#rgReleaseRun');
+        await page.waitForFunction(()=>document.getElementById('rgReleaseStatus').textContent.includes('Target snapshot denied'));
+        assert.equal(await page.locator('#rgReleaseResults').isVisible(),false);
+        assert.equal(await page.evaluate(()=>JSON.stringify(rg28LastComparison)),readinessBefore);
+        await page.evaluate(()=>{fixture.failDiff=false;fixture.delayDiff=200;});
+        await page.click('#rgReleaseRun');
+        await page.click('#rgReleaseChooseTarget');
+        await page.locator('#rgFlowTargetSetup > summary').click();
+        await page.selectOption('#rg28TargetTabSelect','3');
+        await page.waitForTimeout(300);
+        assert.equal(await page.evaluate(()=>rgReleaseDiffUI.result),null);
+        assert.equal(await page.locator('#rgReleaseResults').isVisible(),false);
+        await page.evaluate(()=>fixture.delayDiff=0);
+        await page.selectOption('#rg28TargetTabSelect','2');
+        await page.waitForFunction(()=>!document.getElementById('rg28RunPreflight').disabled);
+        await page.click('#rg28RunPreflight');
+        await page.waitForFunction(()=>document.body.dataset.targetChecked==='true');
+        await page.setViewportSize({width:360,height:900});
         // Display real finding states; a confirmed missing prerequisite is still 100% checked.
         await page.locator('#rgFlowTargetSetup > summary').click();
         await page.evaluate(() => fixture.targetOutcome = 'missing');
@@ -276,11 +349,43 @@ async function mockChrome() {
         // Layout checks at representative narrow and wide panel sizes.
         for (const width of [320, 420, 700]) {
             await page.setViewportSize({ width, height: 900 });
-            for (const screen of ['home', 'solution', 'explorer', 'readiness']) {
+            for (const screen of ['home', 'solution', 'explorer', 'diff', 'readiness']) {
                 await page.evaluate(screen => rgShowScreen(screen), screen);
                 assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${screen} overflows at ${width}px`);
             }
         }
+        // Exercise the actual collector, metadata extensions, XML parser and hashes together.
+        const snapshotPage=await browser.newPage();
+        await snapshotPage.addInitScript(mockChrome);
+        await snapshotPage.goto(`http://127.0.0.1:${server.address().port}/snapshot-fixture.html`);
+        for(const name of ['release-diff.js','content.js','release-diff-content.js']) await snapshotPage.addScriptTag({url:`http://127.0.0.1:${server.address().port}/${name}`});
+        const snapshotResult=await snapshotPage.evaluate(async()=>{
+            let target=false;
+            const id=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+            const labels=text=>({LocalizedLabels:[{LanguageCode:1033,Label:text}]});
+            dataverseFetch=async address=>{
+                const endpoint=new URL(address).pathname.split('/api/data/v9.2/')[1];
+                const tableId=id(target?101:1),columnId=id(target?102:2),formId=id(target?103:3);
+                if(endpoint==='solutioncomponents')return {value:[{componenttype:1,objectid:tableId,rootcomponentbehavior:1},{componenttype:2,objectid:columnId},{componenttype:60,objectid:formId},{componenttype:26,objectid:id(4)}]};
+                if(endpoint.startsWith('solutions('))return {solutionid:id(target?200:100),friendlyname:'Package',uniquename:'package',version:target?'1.0.0.1':'1.0.0.2'};
+                if(endpoint==='EntityDefinitions')return {value:[{MetadataId:tableId,LogicalName:'account',SchemaName:'Account',DisplayName:labels('Account'),Description:labels('Description'),OwnershipType:'UserOwned',PrimaryIdAttribute:'accountid',PrimaryNameAttribute:'name',IsActivity:false,IsAuditEnabled:{Value:target}}]};
+                if(endpoint.endsWith('/Attributes'))return {value:[{MetadataId:columnId,LogicalName:'name',SchemaName:'Name',DisplayName:labels('Name'),Description:labels('Description'),AttributeType:'String',AttributeTypeName:{Value:'StringType'},RequiredLevel:{Value:'None'},IsAuditEnabled:{Value:false},IsValidForAdvancedFind:{Value:true}}]};
+                if(endpoint.endsWith('StringAttributeMetadata'))return {value:[{MetadataId:columnId,MaxLength:target?200:100,Format:'Text'}]};
+                if(endpoint==='systemforms')return {value:[{formid:formId,name:'Main',uniquename:'account_main',type:2,objecttypecode:'account',formxml:`<form><control datafieldname="${target?'accountnumber':'name'}"/></form>`,componentstate:0}]};
+                if(endpoint==='savedqueries')return {value:[{savedqueryid:id(4),name:'Active',returnedtypecode:'account',querytype:0,fetchxml:`<fetch><entity name="account"><attribute name="${target?'accountnumber':'name'}"/></entity></fetch>`,layoutxml:'<grid/>',columnsetxml:null,isdefault:false,isquickfindquery:false,componentstate:0}]};
+                return {value:[]};
+            };
+            const source=await getReleaseDiffSnapshot({solutionId:id(100)});target=true;
+            const destination=await getReleaseDiffSnapshot({solutionId:id(200)});
+            const result=RGReleaseDiff.compare(source,destination);
+            return {sourceSuccess:source.success,targetSuccess:destination.success,matched:result.matched.length,changed:result.changed.length,notCompared:result.notCompared.length,
+                fields:result.changed.flatMap(row=>row.changes),allDefinitionsComplete:source.components.every(row=>row.definition.complete)&&destination.components.every(row=>row.definition.complete)};
+        });
+        assert.equal(snapshotResult.sourceSuccess,true);assert.equal(snapshotResult.targetSuccess,true);
+        assert.equal(snapshotResult.allDefinitionsComplete,true);
+        assert.equal(snapshotResult.matched,4);assert.equal(snapshotResult.changed,4);assert.equal(snapshotResult.notCompared,0);
+        for(const field of ['Auditing','MaxLength','FormXML','FetchXML'])assert.ok(snapshotResult.fields.includes(field),field);
+        await snapshotPage.close();
         assert.deepEqual(errors, []);
         console.log('PASS: automatic setup; analysis loading/success/failure and navigation; explorer; source/target distinction; target auto-connect, retry, stale callbacks and source-tab pinning; evidence tabs; solution reset; source failure; 320/420/700px layouts; splash preservation; no browser errors.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

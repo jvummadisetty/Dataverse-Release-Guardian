@@ -335,3 +335,29 @@ body.rg-workflow {
 .rg-workflow #rgDependencyList:not([data-filter="all"]) .rg282-human-status { display: none; }
 .rg-workflow .rg282-subsection-title { font-size: 11px; margin-top: 16px; letter-spacing: .3px; }
 .rg-workflow #rg282ConfigWarnings .rg282-provider-row { background: #fff9ef; }
+/* Release Diff is separate from prerequisite readiness. */
+.rg-workflow .rg-app-navigation { grid-template-columns: repeat(5,minmax(0,1fr)); }
+.rg-workflow #rgScreenReadiness .rg-screen-header p { overflow-wrap: anywhere; }
+.rg-workflow .rg-release-direction { font-size: 14px; line-height: 1.7; font-weight: 600; overflow-wrap: anywhere; }
+.rg-workflow #rgReleaseStatus { font-size: 12px; margin: 16px 0 0; color: #68758a; }
+.rg-workflow .rg-release-context .rg-flow-actions { margin-top: 16px; }
+.rg-workflow .rg-release-filters { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0; }
+.rg-workflow .rg-release-filters button { border: 1px solid #dfe5ef; border-radius: 9px; padding: 9px 11px; background: #fff; color: #52617c; cursor: pointer; font-size: 12px; }
+.rg-workflow .rg-release-filters button[aria-pressed="true"] { color: #3654cc; background: #eef2ff; border-color: #bfcbed; }
+.rg-workflow .rg-release-filters strong { margin-left: 5px; }
+.rg-workflow .rg-release-row { border-bottom: 1px solid #e7ecf3; }
+.rg-workflow .rg-release-row > summary { display: flex; align-items: center; gap: 14px; justify-content: space-between; cursor: pointer; padding: 14px 0; font-size: 12px; }
+.rg-workflow .rg-release-row > summary > span { min-width: 0; overflow-wrap: anywhere; }
+.rg-workflow .rg-release-row > summary strong { display: block; font-size: 13px; }
+.rg-workflow .rg-release-row > summary small { display: block; color: #68758a; font-size: 11px; margin-top: 4px; }
+.rg-workflow .rg-release-row > summary > span:last-child { color: #68758a; font-size: 11px; }
+.rg-workflow .rg-release-row-body { font-size: 12px; color: #52617c; line-height: 1.6; padding: 0 0 14px; overflow-wrap: anywhere; }
+.rg-workflow .rg-release-row-body code { overflow-wrap: anywhere; }
+.rg-workflow .rg-release-row-body ul { padding-left: 18px; }
+.rg-workflow .rg-release-row-body li { margin-bottom: 9px; }
+.rg-workflow #rgReleaseMore { margin-top: 16px; width: 100%; }
+.rg-workflow .rg-release-count-header { color: #68758a; font-size: 11px; }
+@media (max-width: 420px) {
+    .rg-workflow .rg-nav-button { font-size: 10px !important; min-height: 54px; }
+    .rg-workflow .rg-release-row > summary { align-items: flex-start; flex-direction: column; gap: 5px; }
+}

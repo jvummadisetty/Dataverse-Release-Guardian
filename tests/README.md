@@ -5,7 +5,7 @@ The extension remains plain JavaScript with no build step or added runtime depen
 Run the dependency-name regression suite with Node:
 
 ```sh
-node --test tests/dependency-display-names.test.cjs tests/runtime-component-identities.test.cjs
+node --test tests/dependency-display-names.test.cjs tests/runtime-component-identities.test.cjs tests/release-diff.test.cjs
 ```
 
 Run the guided UI checks with Playwright and Chromium installed in your development environment:
@@ -25,3 +25,15 @@ Readiness clarity checks also reproduce 344 prerequisites (335 verified and 9 un
 Runtime component identity tests cover the reported types 10078, 10252, 10254, 10255, 10256, and 10302 as fixtures, not fixed mappings. Discovery uses each organization's filtered EntityDefinitions/ObjectTypeCode metadata, exact record IDs, and Solution Component Configuration registrations. UAT table/type codes are discovered independently by logical name. Changed-ID matches require a matching active unique key in both organizations; display names alone are never match keys. Zero visible records or denied access remain unverified because custom table row security can hide records.
 
 Metadata references: [Microsoft Solution Component Configuration reference](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/solutioncomponentconfiguration), [Microsoft entity reference](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/reference/entities/entity). Runtime mappings and the actual nine component names still require an authenticated live DEV/target check; fixture tests do not establish those names.
+
+## Release Diff
+
+Reload the unpacked extension **and refresh both Dynamics tabs** after installing this version: the manifest now loads the shared comparison engine and snapshot collector in each authenticated tab. Choose/analyse the source solution, choose a target solution in Readiness, and open Release Diff. Both headers show actual source → target hostnames and solution versions; environment roles are not guessed from names.
+
+Release Diff is read-only and independent of prerequisite readiness. It takes nontransactional live snapshots of each selected solution's membership and current effective definitions, not original exported ZIPs or reconstructed managed layers. It expands include-all table subcomponents and preserves explicit membership. Four tables are processed concurrently per snapshot; IDs are batched and definition fingerprints keep raw XML out of the messaging payload. Failed reads, table shells, unsupported settings, unresolved identities, and ambiguous name-only candidates stay Not compared.
+
+Tables match by logical name, columns by parent table + logical name, forms by unique name or preserved ID, and views by preserved ID. Different-ID forms/views sharing only a display name are not guessed matches. Source only/Target only describe solution membership; neither means absent from the environment nor predicts an import deletion. Changed is a subset of Matched; matching identity is not proof of equality. No covered differences refers only to the properties listed in the UI's scope disclosure.
+
+Regression checks cover stable identities, ambiguous and partial inventories, definition coverage, include-all inheritance, subtype read failures, unsupported attributes, source/target membership, table shells, and bounded concurrency. The browser runner also exercises real FormXML/FetchXML canonicalization and SHA-256 fingerprints through the actual collector, tab state/reset/failure handling, five result categories, escaped names, direction/version labels, and 320/420/700px layouts. No live Dynamics organization was contacted by these tests.
+
+Live smoke check: compare a familiar UAT/PROD solution in Release Diff, verify direction/versions, expand a known changed column/form/view, and confirm one-sided membership against the selected packages. An unreadable definition must never appear as unchanged; switching the source or target must clear the diff. Re-run Readiness separately to check prerequisites.
