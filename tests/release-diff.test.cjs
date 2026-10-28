@@ -102,7 +102,8 @@ function collector({includeAll=false,failAttributes=false,failSubtype=false,shel
 test('snapshot hashes column settings, includes inherited members, and does not duplicate explicit members',async()=>{
     const h=collector({includeAll:true}),result=await h.run();
     assert.equal(result.success,true);assert.equal(result.environment.host,'uat.crm.dynamics.com');assert.equal(result.solution.version,'1.0.0.2');
-    assert.equal(result.components.length,5);assert.equal(result.unsupported[29],1);
+    assert.equal(result.components.length,6);assert.equal(result.unsupported[29],undefined);
+    assert.equal(result.components.find(row=>row.family==='process').definition.complete,false);
     const explicit=result.components.find(row=>row.id===guid(2)),inherited=result.components.find(row=>row.id===guid(6));
     assert.equal(explicit.membership,'explicit');assert.equal(inherited.membership,'inherited');
     assert.equal(explicit.definition.complete,true);assert.equal(explicit.definition.fingerprints.MaxLength.length,64);
@@ -167,4 +168,38 @@ test('localized preview formatting never changes the definition fingerprint',asy
     const expected=Buffer.from(await webcrypto.subtle.digest('SHA-256',bytes)).toString('hex');
     assert.equal(definition.previews.Description,'Language 1033: A description');
     assert.equal(definition.fingerprints.Description,expected);
+});
+
+
+test('all inventory types remain visible; unread role privileges cannot imply equality',async()=>{
+    const h=collector();h.inventory.push({componenttype:99999,objectid:guid(91)},{componenttype:20,objectid:guid(92)});
+    const original=h.ctx.dataverseFetch;
+    h.ctx.dataverseFetch=async url=>url.includes('/roles?')?{value:[{roleid:guid(92),name:'Support role'}]}:original(url);
+    const result=await h.run();
+    const unknown=result.components.find(row=>row.id===guid(91)),role=result.components.find(row=>row.id===guid(92));
+    assert.equal(unknown.definition.complete,false);assert.equal(unknown.definition.issues[0].code,'unsupported_type');
+    assert.equal(role.name,'Support role');assert.equal(role.definition.complete,false);
+    assert.equal(h.ctx.diff.compare(result,result).changed.length,0);
+    assert.ok(h.ctx.diff.compare(result,result).notCompared.some(row=>row.source?.id===guid(92)));
+});
+
+test('flow JSON and schema connection references compare; malformed or denied definitions stay incomplete',async()=>{
+    const h=collector();h.inventory.push({componenttype:371,objectid:guid(93)});
+    const original=h.ctx.dataverseFetch;let variant=false,malformed=false,denied=false;
+    h.ctx.dataverseFetch=async url=>{
+        if(url.includes('/workflows?'))return {value:[{workflowid:guid(5),name:'Cloud flow',category:5,clientdata:malformed?'bad':JSON.stringify({properties:{definition:{triggers:{},actions:variant?{NewAction:{type:'Compose'}}:{}}}})}]};
+        if(url.includes('/connectionreferences?')){
+            if(denied)throw new Error('Denied');
+            return {value:[{connectionreferenceid:guid(93),connectionreferencelogicalname:'org_shared',connectionreferencedisplayname:'Shared',connectorid:variant?'connectorB':'connectorA'}]};
+        }
+        return original(url);
+    };
+    const source=await h.run();variant=true;const target=await h.run();
+    const changes=h.ctx.diff.compare(source,target).changed;
+    assert.ok(changes.some(row=>row.changes.includes('Flow definition')));
+    assert.ok(changes.some(row=>row.changes.includes('Connector')));
+    malformed=true;denied=true;const partial=await h.run();
+    assert.equal(partial.coverage['connection reference'],false);
+    assert.equal(partial.components.find(row=>row.family==='process').definition.complete,false);
+    assert.equal(h.ctx.diff.compare(source,partial).sourceOnly.length,0);
 });

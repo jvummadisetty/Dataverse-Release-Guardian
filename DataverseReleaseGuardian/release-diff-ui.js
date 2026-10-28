@@ -7,7 +7,7 @@ const rgReleaseDiffUI = {
         const screen=document.createElement('div');screen.id='rgScreenDiff';screen.className='rg-screen';screen.dataset.screen='diff';screen.style.display='none';
         screen.innerHTML=`<div class="rg-screen-header"><h2 tabindex="-1">Release Diff</h2><p>What differs between the selected solutions?</p></div>
             <section class="card rg-release-context"><div id="rgReleaseDirection" class="rg-release-direction"></div>
-                <p class="rg-flow-note">Tables, columns, forms and views · live effective definitions. Import effects can vary with solution layers.</p>
+                <p class="rg-flow-note">Solution components · covered live effective definitions. Import effects can vary with solution layers.</p>
                 <div class="rg-flow-actions"><button id="rgReleaseRun" class="primary-button" type="button" disabled>Compare release contents</button>
                 <button id="rgReleaseChooseTarget" class="secondary-button" type="button">Choose destination</button></div>
                 <p id="rgReleaseStatus" role="status" aria-live="polite">Choose a source and target solution to begin.</p></section>
@@ -118,7 +118,7 @@ const rgReleaseDiffUI = {
             <div class="rg-release-review-controls">
                 <label class="rg-release-search">Search components<input id="rgReleaseSearch" type="search" placeholder="Name, table, ID or property" value="${esc(this.facets.query)}" /></label>
                 <label>Table<select id="rgReleaseTable">${option('','All tables',this.facets.table)}${tables.map(table=>option(table,review.tableLabel(table),this.facets.table)).join('')}</select></label>
-                <label>Component type<select id="rgReleaseFamily">${option('','All types',this.facets.family)}${['table','column','form','view'].map(type=>option(type,type[0].toUpperCase()+type.slice(1),this.facets.family)).join('')}</select></label>
+                <label>Component type<select id="rgReleaseFamily">${option('','All types',this.facets.family)}${[...new Set([...this.snapshots.source.components,...this.snapshots.target.components].map(item=>item.family))].sort().map(type=>option(type,type[0].toUpperCase()+type.slice(1),this.facets.family)).join('')}</select></label>
                 ${canFilterChanges?`<label>Changed property<select id="rgReleaseProperty">${option('','Any property',this.facets.property)}${properties.map(field=>option(field,field,this.facets.property)).join('')}</select></label>`:''}
                 ${this.filter==='matched'?`<label>Comparison outcome<select id="rgReleaseKind">${option('','Any outcome',this.facets.kind)}${Object.entries(review.kinds).map(([key,label])=>option(key,label,this.facets.kind)).join('')}</select></label>`:''}
                 <label>Group by<select id="rgReleaseGroup">${option('table','Table',this.groupBy)}${option('family','Component type',this.groupBy)}${canFilterChanges?option('property','Changed properties (combination)',this.groupBy):''}${this.filter==='notCompared'?option('reason','Primary coverage reason',this.groupBy):''}${option('none','No grouping',this.groupBy)}</select></label>
@@ -127,10 +127,10 @@ const rgReleaseDiffUI = {
             <div class="rg-release-list">${rows.length?list:'<p class="rg-readiness-empty">No entries match these filters. Clear filters to see the full category.</p>'}</div>
             ${rows.length>this.limit?`<button class="secondary-button" id="rgReleaseMore" type="button">Show more (${rows.length-this.limit} remaining)</button>`:''}
             <details class="rg-flow-disclosure"><summary>Comparison scope &amp; limitations</summary>
-                <p class="rg-flow-note">${unsupported} inventory entries across both snapshots are outside the four supported component types.</p>
+                <p class="rg-flow-note">${unsupported} inventory entries across both snapshots have unsupported definitions and remain visible under Not compared.</p>
                 <p class="rg-flow-note">Reads published forms/views and current table/column metadata for explicit and inherited solution members. Table shells, unreadable or unsupported definitions remain Not compared. Managed solution layers and the contents of an original exported ZIP are not reconstructed.</p>
                 <p class="rg-flow-note">Tables use logical names; columns use table + logical name; forms use unique names or preserved IDs; views use preserved IDs. Different-ID forms/views with matching names remain ambiguous rather than being matched by name alone.</p>
-                <p class="rg-flow-note">Definition coverage: table labels/settings and package scope; column base settings and supported type-specific settings/options; FormXML; view FetchXML, LayoutXML, ColumnSetXML and selected view settings. XML formatting/comments are ignored; meaningful XML IDs, values and child order are retained.</p>
+                <p class="rg-flow-note">Definition coverage: process XAML or cloud-flow client data, connection-reference logical names/connectors, web-resource content, environment-variable definition settings (not secret/default/current values); table labels/settings and package scope; column base settings and supported type-specific settings/options; FormXML; view FetchXML, LayoutXML, ColumnSetXML and selected view settings. Security-role privileges and other unsupported component definitions remain Not compared. Connection-reference existence, binding and permissions must be checked in Readiness and the destination environment. Flow definitions can contain environment-specific values; differences are not import predictions. XML formatting/comments are ignored; meaningful XML IDs, values and child order are retained.</p>
                 ${diagnostics.length?`<ul>${[...new Set(diagnostics)].map(text=>`<li>${esc(text)}</li>`).join('')}</ul>`:''}
             </details>`;
         container.querySelectorAll('[data-release-filter]').forEach(button=>button.addEventListener('click',()=>{this.filter=button.dataset.releaseFilter;this.resetReview();this.render(`rgReleaseCategory-${this.filter}`);}));

@@ -47,3 +47,10 @@ Not compared summarizes primary coverage reasons: table shells, unsupported type
 Filtering and grouping run locally against the existing result. They never issue more Dataverse requests or modify readiness, identity matches, definition hashes, category totals, or component IDs. The UI reports shown/filtered/category counts separately and paginates without silently dropping records. Localized label/description previews are displayed as language-tagged text rather than JSON; the hashed definition data is unchanged.
 
 Review tests include 669 changed and 1,320 not-compared fixture entries, disjoint reason/change summaries, combined filters, search focus/caret preservation, pagination, primary-reason grouping, readable previews, and narrow layouts. Those fixture breakdowns are not a diagnosis of a user's live 1,320 entries.
+
+Expanded Release Diff coverage smoke check:
+- Reload the extension and refresh both Dynamics tabs. Compare a flow solution: published process XAML/cloud-flow client data is compared by preserved component ID (names alone never pair flows).
+- Compare connection-reference logical names and connector definitions. A source-only reference means selected-solution membership differs; use Readiness for target prerequisite checks and verify connection authentication/permissions in the target maker portal.
+- Verify web resources and environment-variable definition settings appear. Environment-variable values, connections, credentials and secret values are not collected by the new variable/reference comparisons. Flow/resource payload previews are suppressed.
+- Compare a role-only solution: roles must appear under Not compared, with privilege/access-depth coverage explicitly unavailable. No privilege equality is claimed.
+- Other inventory component types must remain visible under Not compared, rather than disappearing into zero results. Unsupported definitions are not confirmed missing.
