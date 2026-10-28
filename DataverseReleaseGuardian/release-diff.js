@@ -29,7 +29,10 @@ const RGReleaseDiff = (() => {
                 const bytes = new TextEncoder().encode(stable(value));
                 const hash = await crypto.subtle.digest('SHA-256', bytes);
                 fingerprints[field] = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2,'0')).join('');
-                previews[field] = xmlFields.includes(field) ? 'XML definition' : (typeof value === 'string' ? value : stable(value)).slice(0,180);
+                const text = Array.isArray(value)&&value.every(item=>item&&typeof item.text==='string'&&'language' in item)
+                    ? value.map(item=>`Language ${item.language}: ${item.text}`).join('\n') || 'No text'
+                    : typeof value==='string'?value:stable(value);
+                previews[field] = xmlFields.includes(field) ? 'XML definition' : text.length>180?`${text.slice(0,180)}…`:text;
             } catch (_) { missing.push(field); }
         }
         return { complete: missing.length === 0, fingerprints, previews, missing };

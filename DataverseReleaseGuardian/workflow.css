@@ -361,3 +361,37 @@ body.rg-workflow {
     .rg-workflow .rg-nav-button { font-size: 10px !important; min-height: 54px; }
     .rg-workflow .rg-release-row > summary { align-items: flex-start; flex-direction: column; gap: 5px; }
 }
+/* Review large diffs without changing their classifications. */
+.rg-workflow .rg-release-summary { padding: 14px; margin: 14px 0; background: #f6f8fc; border-radius: 10px; }
+.rg-workflow .rg-release-summary h4 { font-size: 13px; margin: 0 0 6px; }
+.rg-workflow .rg-release-summary p { font-size: 12px; color: #68758a; line-height: 1.6; margin: 6px 0; }
+.rg-workflow .rg-release-review-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.rg-workflow .rg-release-review-chips button { font-size: 11px; color: #52617c; cursor: pointer; background: #fff; border: 1px solid #dfe5ef; border-radius: 8px; padding: 8px; text-align: left; }
+.rg-workflow .rg-release-review-chips button[aria-pressed="true"] { background: #eef2ff; color: #3654cc; border-color: #bfcbed; }
+.rg-workflow .rg-release-review-chips strong { margin-left: 5px; }
+.rg-workflow .rg-release-review-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+.rg-workflow .rg-release-review-controls label { min-width: 0; color: #68758a; font-size: 11px !important; }
+.rg-workflow .rg-release-review-controls select, .rg-workflow .rg-release-review-controls input { display: block; width: 100%; min-width: 0; margin-top: 5px; }
+.rg-workflow .rg-release-review-controls .rg-release-search { grid-column: 1 / -1; }
+.rg-workflow .rg-release-review-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+.rg-workflow .rg-release-review-status .rg-flow-link { flex-shrink: 0; margin: 0; }
+.rg-workflow .rg-release-group { margin: 10px 0; border: 1px solid #e3e8f0; border-radius: 10px; overflow: hidden; }
+.rg-workflow .rg-release-group > summary { display: flex; justify-content: space-between; gap: 10px; padding: 12px; background: #f7f9fc; cursor: pointer; font-size: 12px; }
+.rg-workflow .rg-release-group > summary strong { min-width: 0; overflow-wrap: anywhere; }
+.rg-workflow .rg-release-group > summary span { color: #68758a; flex-shrink: 0; }
+.rg-workflow .rg-release-group > div { padding: 0 12px; }
+.rg-workflow .rg-release-group .rg-release-row:last-child { border-bottom: 0; }
+.rg-workflow .rg-release-preview { white-space: pre-wrap; overflow-wrap: anywhere; }
+.rg-workflow .rg-release-coverage-evidence { font-size: 12px; line-height: 1.6; }
+.rg-workflow .rg-release-coverage-evidence dt { font-weight: 600; margin-top: 8px; }
+.rg-workflow .rg-release-coverage-evidence dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+@media (max-width: 350px) {
+    .rg-workflow .rg-release-review-controls { grid-template-columns: minmax(0,1fr); }
+    .rg-workflow .rg-release-review-status { align-items: flex-start; }
+}
+.rg-workflow .rg-release-group > summary::before { content: '▸'; color: #68758a; }
+.rg-workflow .rg-release-group[open] > summary::before { content: '▾'; }
+.rg-workflow .rg-release-group > summary strong { flex: 1; }
+.rg-workflow .rg-release-row > summary { position: relative; padding-right: 20px; }
+.rg-workflow .rg-release-row > summary::after { content: '+'; position: absolute; right: 0; top: 14px; color: #68758a; font-size: 16px; }
+.rg-workflow .rg-release-row[open] > summary::after { content: '−'; }

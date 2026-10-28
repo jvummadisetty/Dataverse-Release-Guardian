@@ -158,3 +158,13 @@ test('unsupported column type details stay explicitly not compared',async()=>{
     assert.equal(column.definition.complete,false);
     assert.ok(column.definition.missing.includes('Unsupported or unavailable type-specific settings'));
 });
+
+
+test('localized preview formatting never changes the definition fingerprint',async()=>{
+    const ctx=context();const values={Description:[{language:1033,text:'A description'}]};
+    const definition=await ctx.diff.definition(values,['Description']);
+    const bytes=new TextEncoder().encode(JSON.stringify(values.Description));
+    const expected=Buffer.from(await webcrypto.subtle.digest('SHA-256',bytes)).toString('hex');
+    assert.equal(definition.previews.Description,'Language 1033: A description');
+    assert.equal(definition.fingerprints.Description,expected);
+});
