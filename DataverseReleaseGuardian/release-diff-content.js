@@ -3,11 +3,11 @@ async function getReleaseDiffSnapshot(request) {
     const solutionId=normalizeGuid(request.solutionId);
     if (!rgRuntimeGuid(solutionId)) return { success:false, error:'A valid solution ID is required.' };
     const origin=`${window.location.origin}/api/data/v9.2/`;
-    const families=['table','column','form','view'];
+    const families=['table','column','form','view','process','connection reference','web resource','environment variable','security role'];
     const snapshot={ success:true, schemaVersion:1, environment:{host:window.location.hostname}, components:[],
         coverage:Object.fromEntries(families.map(family=>[family,true])), unsupported:{}, diagnostics:[], scope:'Current effective live definitions; exported solution layers are not reconstructed.' };
     const records=new Map();
-    const supported={1:'table',2:'column',24:'form',60:'form',26:'view'};
+    const supported={1:'table',2:'column',24:'form',60:'form',26:'view',29:'process',371:'connection reference',61:'web resource',380:'environment variable',20:'security role'};
     const issue=(family,message)=>{snapshot.coverage[family]=false;snapshot.diagnostics.push({family,message});};
     const guid=normalizeGuid;
     const label=value=>(value?.LocalizedLabels || []).map(item=>({language:item.LanguageCode,text:item.Label})).sort((a,b)=>a.language-b.language);
@@ -35,7 +35,14 @@ async function getReleaseDiffSnapshot(request) {
         const members=new Map();
         components.forEach(component=>{
             const family=supported[Number(component.componenttype)];
-            if(!family) { snapshot.unsupported[component.componenttype]=(snapshot.unsupported[component.componenttype]||0)+1;return; }
+            if(!family) {
+                const type=Number(component.componenttype);
+                snapshot.unsupported[type]=(snapshot.unsupported[type]||0)+1;
+                add({family:`Component type ${type}`,id:guid(component.objectid)||String(component.solutioncomponentid||records.size),key:null,
+                    name:`Component type ${type}`,componentType:type,table:'',membership:'explicit',
+                    definition:{complete:false,fingerprints:{},missing:['Definition comparison is not supported for this component type.'],issues:[{code:'unsupported_type'}]}});
+                return;
+            }
             const id=guid(component.objectid);
             if(!rgRuntimeGuid(id)) {issue(family,'An inventory row had no usable underlying component ID.');return;}
             members.set(`${family}:${id}`,component);
@@ -142,6 +149,46 @@ async function getReleaseDiffSnapshot(request) {
             (async()=>{try{const ids=[...members.keys()].filter(key=>key.startsWith('form:')).map(key=>key.slice(5));for(const row of await byIds('systemforms','formid',ids,formFields,true))await recordForm(row,'explicit');}catch(_){issue('form','Explicit form definitions could not all be read.');}})(),
             (async()=>{try{const ids=[...members.keys()].filter(key=>key.startsWith('view:')).map(key=>key.slice(5));for(const row of await byIds('savedqueries','savedqueryid',ids,viewFields,true))await recordView(row,'explicit');}catch(_){issue('view','Explicit view definitions could not all be read.');}})()
         ]);
+        // Explicit non-table members. Use schema identities or preserved IDs, never display names.
+        const specs=[
+            {family:'process',set:'workflows',id:'workflowid',fields:'workflowid,name,category,clientdata,xaml',name:'name'},
+            {family:'connection reference',set:'connectionreferences',id:'connectionreferenceid',fields:'connectionreferenceid,connectionreferencelogicalname,connectionreferencedisplayname,connectorid',name:'connectionreferencedisplayname',key:'connectionreferencelogicalname'},
+            {family:'web resource',set:'webresourceset',id:'webresourceid',fields:'webresourceid,name,webresourcetype,content',name:'name',key:'name'},
+            {family:'environment variable',set:'environmentvariabledefinitions',id:'environmentvariabledefinitionid',fields:'environmentvariabledefinitionid,schemaname,displayname,type,isrequired',name:'displayname',key:'schemaname'},
+            {family:'security role',set:'roles',id:'roleid',fields:'roleid,name',name:'name'}
+        ];
+        await parallel(specs,async spec=>{
+            const ids=[...members.values()].filter(item=>supported[Number(item.componenttype)]===spec.family).map(item=>guid(item.objectid));
+            if(!ids.length)return;
+            try {
+                for(const row of await byIds(spec.set,spec.id,ids,spec.fields)) {
+                    let values={},required=[],xml=[];
+                    if(spec.family==='process') {
+                        values={'Display name':row.name,'Process category':row.category};
+                        if(row.category===5) {
+                            // JSON object key order is not a definition change. Malformed/absent JSON stays incomplete.
+                            try {values['Flow definition']=row.clientdata?JSON.parse(row.clientdata):undefined;}catch(_){}
+                            required=['Display name','Process category','Flow definition'];
+                        }else {values.Xaml=row.xaml;required=['Display name','Process category','Xaml'];xml=['Xaml'];}
+                    }else if(spec.family==='connection reference') {
+                        values={'Logical name':row.connectionreferencelogicalname,'Display name':row.connectionreferencedisplayname,'Connector':row.connectorid};required=Object.keys(values);
+                    }else if(spec.family==='web resource') {
+                        values={'Name':row.name,'Resource type':row.webresourcetype,'Content':row.content};required=Object.keys(values);
+                    }else if(spec.family==='environment variable') {
+                        values={'Schema name':row.schemaname,'Display name':row.displayname,'Type':row.type,'Required':row.isrequired};required=Object.keys(values);
+                    }
+                    const definition=await RGReleaseDiff.definition(values,required,xml);
+                    // Flow payloads/resource contents may contain sensitive configuration; compare hashes without displaying payload previews.
+                    for(const field of ['Flow definition','Content'])if(definition.previews[field])definition.previews[field]='Content differs; inspect the definition in the maker portal.';
+                    if(spec.family==='security role') {
+                        definition.complete=false;definition.missing.push('Role privileges and access depths have not been compared.');definition.issues=[{code:'unsupported_type'}];
+                    }
+                    const id=guid(row[spec.id]);
+                    add({family:spec.family,id,name:row[spec.name]||spec.family,table:'',membership:'explicit',
+                        key:spec.key&&row[spec.key]?`${spec.family}:${String(row[spec.key]).toLowerCase()}`:`${spec.family}id:${id}`,definition});
+                }
+            }catch(_){issue(spec.family,`${spec.family} definitions could not be read.`);}
+        });
         for(const [key,component] of members)if(!records.has(key)) {
             const family=supported[Number(component.componenttype)];issue(family,'A packaged component identity or definition was not returned.');
             add({family,id:guid(component.objectid),key:null,name:`Unresolved ${family}`,table:'',membership:'explicit',definition:{complete:false,fingerprints:{},missing:['Metadata not returned'],issues:[{code:'metadata_unavailable'}]}});
