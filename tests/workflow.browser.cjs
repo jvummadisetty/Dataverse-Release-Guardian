@@ -77,7 +77,7 @@ async function mockChrome() {
     const server = http.createServer((request, response) => {
         const name = new URL(request.url, 'http://localhost').pathname.slice(1);
         if(name==='snapshot-fixture.html'){response.setHeader('Content-Type','text/html');response.end('<!doctype html><title>Snapshot fixture</title>');return;}
-        if (!['sidepanel.html', 'sidepanel.js', 'workflow.js', 'styles.css', 'workflow.css', 'release-diff.js', 'release-diff-ui.js', 'content.js', 'release-diff-content.js'].includes(name)) { response.writeHead(404).end(); return; }
+        if (!['sidepanel.html', 'sidepanel.js', 'workflow.js', 'styles.css', 'workflow.css', 'release-diff.js', 'release-diff-ui.js', 'release-diff-review.js', 'content.js', 'release-diff-content.js'].includes(name)) { response.writeHead(404).end(); return; }
         response.setHeader('Content-Type', name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : 'text/html');
         response.end(fs.readFileSync(path.join(__dirname, '../DataverseReleaseGuardian', name)));
     });
@@ -170,6 +170,82 @@ async function mockChrome() {
             await page.click(`[data-release-filter="${filter}"]`);
             assert.ok(await page.locator('.rg-release-row').count()>0);
         }
+        // Review-scale fixture: 669 changed, 7,914 matched, 1,320 not compared.
+        const releaseCallsBefore=await page.evaluate(()=>fixture.calls.filter(call=>call.action==='getReleaseDiffSnapshot').length);
+        await page.evaluate(()=>{
+            window.originalReleaseResult=rgReleaseDiffUI.result;
+            const make=(i,state,changes=[])=>({state,changes,source:{id:`review-${i}`,name:`Change ${i}`,family:'column',table:'account',membership:'explicit',definition:{complete:true,missing:[],fingerprints:{},previews:{}}},
+                target:{id:`target-${i}`,name:`Change ${i}`,family:'column',table:'account',membership:'explicit',definition:{complete:true,missing:[],fingerprints:{},previews:{}}}});
+            const changed=Array.from({length:669},(_,i)=>{
+                const fields=i<100?['Description']:i<300?['MaxLength']:i<500?['FormXML']:['Display name','FetchXML'];
+                const value=make(i,'changed',fields);
+                if(i>=300&&i<500){value.source.family='form';value.source.table='contact';}
+                if(i>=500){value.source.family='view';value.source.table='incident';}
+                value.target.family=value.source.family;value.target.table=value.source.table;
+                for(const field of fields){value.source.definition.previews[field]=field==='Description'?'[{"language":1033,"text":"Source description"}]':'Source value';value.target.definition.previews[field]=field==='Description'?'[{"language":1033,"text":"Target description"}]':'Target value';}
+                return value;
+            });
+            const gaps=Array.from({length:1320},(_,i)=>{
+                const value=make(10000+i,'notCompared');value.source.name=`Gap ${i}`;value.target.name=value.source.name;
+                const code=i<400?'table_shell':i<700?'unsupported_type':i<900?'metadata_unavailable':null;
+                value.source.family=i<400?'table':i>=1220?'view':'column';value.target.family=value.source.family;
+                value.source.table=i<400?'account':i<700?'contact':i<900?'incident':i<1220?'account':'';value.target.table=value.source.table;
+                value.source.definition={complete:false,missing:['Missing property'],issues:code?[{code}]:[]};value.target.definition={...value.source.definition};
+                if(i>=1220)delete value.target;
+                return value;
+            });
+            rgReleaseDiffUI.result={changed,matched:[...changed,...Array.from({length:7245},(_,i)=>make(20000+i,'same'))],sourceOnly:[],targetOnly:[],notCompared:gaps};
+            rgReleaseDiffUI.filter='notCompared';rgReleaseDiffUI.resetReview();rgReleaseDiffUI.render();
+        });
+        assert.equal(await page.locator('[data-release-filter="notCompared"] strong').innerText(),'1320');
+        const reasonTotal=await page.locator('[data-review-reason] strong').evaluateAll(nodes=>nodes.reduce((sum,node)=>sum+Number(node.textContent),0));
+        assert.equal(reasonTotal,1320);
+        assert.equal(await page.locator('.rg-release-row').count(),25);
+        await page.click('[data-review-reason="tableShell"]');
+        assert.ok((await page.locator('#rgReleaseShowing').innerText()).includes('of 400 matching'));
+        assert.ok((await page.locator('.rg-release-summary').innerText()).includes('intentionally not compared'));
+        await page.selectOption('#rgReleaseTable','account');
+        await page.selectOption('#rgReleaseFamily','table');
+        await page.click('#rgReleaseSearch');await page.keyboard.type('Gap 10');
+        assert.equal(await page.locator('#rgReleaseSearch').inputValue(),'Gap 10');
+        assert.equal(await page.evaluate(()=>document.activeElement.id),'rgReleaseSearch');
+        assert.equal(await page.locator('.rg-release-row').count(),11);
+        await page.click('#rgReleaseClear');
+        assert.ok((await page.locator('#rgReleaseShowing').innerText()).includes('of 1320 matching'));
+        await page.setViewportSize({width:700,height:900});await page.evaluate(()=>window.scrollTo(0,0));
+        await page.screenshot({path:'/tmp/guardian-release-coverage-review.png',fullPage:true});
+        await page.click('[data-release-filter="changed"]');
+        assert.equal(await page.locator('[data-review-kind="descriptionOnly"] strong').innerText(),'100');
+        assert.equal(await page.locator('[data-review-kind="settings"] strong').innerText(),'200');
+        assert.equal(await page.locator('[data-review-kind="xml"] strong').innerText(),'200');
+        assert.equal(await page.locator('[data-review-kind="mixed"] strong').innerText(),'169');
+        await page.click('[data-review-kind="descriptionOnly"]');
+        await page.selectOption('#rgReleaseTable','account');await page.selectOption('#rgReleaseFamily','column');
+        await page.selectOption('#rgReleaseProperty','Description');await page.selectOption('#rgReleaseGroup','property');
+        assert.ok((await page.locator('#rgReleaseShowing').innerText()).includes('of 100 matching'));
+        await page.click('#rgReleaseSearch');await page.keyboard.type('Change 10');
+        assert.equal(await page.locator('.rg-release-row').count(),1);
+        await page.locator('.rg-release-row > summary').click();
+        const description=await page.locator('.rg-release-row-body').innerText();
+        assert.ok(description.includes('Language 1033: Source description'));assert.equal(description.includes('[{"language"'),false);
+        await page.click('#rgReleaseClear');await page.selectOption('#rgReleaseGroup','family');
+        await page.selectOption('#rgReleaseProperty','FormXML');
+        assert.ok((await page.locator('#rgReleaseShowing').innerText()).includes('of 200 matching'));
+        assert.equal((await page.locator('.rg-release-group > summary strong').first().innerText()),'form');
+        await page.click('#rgReleaseMore');assert.equal(await page.locator('.rg-release-row').count(),50);
+        await page.selectOption('#rgReleaseGroup','property');
+        assert.equal((await page.locator('.rg-release-group > summary strong').first().innerText()),'FormXML');
+        for(const width of [320,420,700]){
+            await page.setViewportSize({width,height:900});
+            assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Review controls overflow at ${width}px`);
+        }
+        await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'/tmp/guardian-release-change-review.png',fullPage:true});
+        await page.fill('#rgReleaseSearch','nothing-matches');assert.equal(await page.locator('.rg-release-row').count(),0);
+        await page.click('#rgReleaseClear');
+        assert.equal(await page.evaluate(()=>fixture.calls.filter(call=>call.action==='getReleaseDiffSnapshot').length),releaseCallsBefore);
+        assert.equal(await page.evaluate(()=>JSON.stringify(rg28LastComparison)),readinessBefore);
+        await page.evaluate(()=>{rgReleaseDiffUI.result=window.originalReleaseResult;delete window.originalReleaseResult;rgReleaseDiffUI.filter='changed';rgReleaseDiffUI.resetReview();rgReleaseDiffUI.render();});
+
         // Real browser XML canonicalization, not a fixture hash.
         const xmlChecks=await page.evaluate(async()=>{
             const def=value=>RGReleaseDiff.definition({FormXML:value},['FormXML'],['FormXML']);

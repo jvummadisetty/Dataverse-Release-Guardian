@@ -5,7 +5,7 @@ The extension remains plain JavaScript with no build step or added runtime depen
 Run the dependency-name regression suite with Node:
 
 ```sh
-node --test tests/dependency-display-names.test.cjs tests/runtime-component-identities.test.cjs tests/release-diff.test.cjs
+node --test tests/dependency-display-names.test.cjs tests/runtime-component-identities.test.cjs tests/release-diff.test.cjs tests/release-diff-review.test.cjs
 ```
 
 Run the guided UI checks with Playwright and Chromium installed in your development environment:
@@ -37,3 +37,13 @@ Tables match by logical name, columns by parent table + logical name, forms by u
 Regression checks cover stable identities, ambiguous and partial inventories, definition coverage, include-all inheritance, subtype read failures, unsupported attributes, source/target membership, table shells, and bounded concurrency. The browser runner also exercises real FormXML/FetchXML canonicalization and SHA-256 fingerprints through the actual collector, tab state/reset/failure handling, five result categories, escaped names, direction/version labels, and 320/420/700px layouts. No live Dynamics organization was contacted by these tests.
 
 Live smoke check: compare a familiar UAT/PROD solution in Release Diff, verify direction/versions, expand a known changed column/form/view, and confirm one-sided membership against the selected packages. An unreadable definition must never appear as unchanged; switching the source or target must clear the diff. Re-run Readiness separately to check prerequisites.
+
+### Reviewing large diffs
+
+Changed now summarizes Description only, Labels and text only, Settings / structure only, XML only, and Mixed changes. These are property categories, not deployment-risk ratings. Filter by table, component type, changed property, or name/ID search. Group by table, component type, or an exact combination of changed properties so multi-property entries are never duplicated across groups.
+
+Not compared summarizes primary coverage reasons: table shells, unsupported type-specific settings, metadata not returned, incomplete covered definitions, and identity/inventory gaps. Each entry belongs to one primary reason, with source/target coverage details retained when expanded. Old snapshots with combined unsupported/unavailable messages remain in the broader incomplete category instead of guessing a cause. Run a fresh comparison to collect the new structured reason details.
+
+Filtering and grouping run locally against the existing result. They never issue more Dataverse requests or modify readiness, identity matches, definition hashes, category totals, or component IDs. The UI reports shown/filtered/category counts separately and paginates without silently dropping records. Localized label/description previews are displayed as language-tagged text rather than JSON; the hashed definition data is unchanged.
+
+Review tests include 669 changed and 1,320 not-compared fixture entries, disjoint reason/change summaries, combined filters, search focus/caret preservation, pagination, primary-reason grouping, readable previews, and narrow layouts. Those fixture breakdowns are not a diagnosis of a user's live 1,320 entries.

@@ -88,7 +88,7 @@ async function getReleaseDiffSnapshot(request) {
                 'Description':table.Description===undefined?undefined:label(table.Description),'Ownership':table.OwnershipType,
                 'Primary name column':table.PrimaryNameAttribute,'Activity table':table.IsActivity,'Auditing':managed(table.IsAuditEnabled),'Package subcomponent behavior':scope===null||scope===undefined?undefined:Number(scope)};
             const tableDefinition=await RGReleaseDiff.definition(values,Object.keys(values));
-            if(Number(scope)===2){tableDefinition.complete=false;tableDefinition.missing.push('Table shell: settings are not a full packaged table definition');}
+            if(Number(scope)===2){tableDefinition.complete=false;tableDefinition.missing.push('Table shell: settings are not a full packaged table definition');tableDefinition.issues=[{code:'table_shell'}];}
             add({family:'table',id:guid(table.MetadataId),name:name(table.DisplayName)||table.LogicalName,table:table.LogicalName,
                 key:table.LogicalName?`table:${table.LogicalName.toLowerCase()}`:null,membership:'explicit',definition:tableDefinition});
             if(all || columnIds.size) {
@@ -122,6 +122,7 @@ async function getReleaseDiffSnapshot(request) {
                             const definition=await RGReleaseDiff.definition(values,required);
                             if(spec&&(!detailRead||!data) || !spec&&!['Uniqueidentifier','EntityName'].includes(kind)) {
                                 definition.complete=false;definition.missing.push('Unsupported or unavailable type-specific settings');
+                                definition.issues=[{code:spec?'definition_unavailable':'unsupported_type',detail:spec?'Type-specific settings were not returned.':`Type-specific comparison is not supported for ${kind || 'Unknown'}.`}];
                             }
                             add({family:'column',id:guid(row.MetadataId),name:name(row.DisplayName)||row.LogicalName,table:table.LogicalName,
                                 key:row.LogicalName&&table.LogicalName?`column:${table.LogicalName.toLowerCase()}:${row.LogicalName.toLowerCase()}`:null,
@@ -143,7 +144,7 @@ async function getReleaseDiffSnapshot(request) {
         ]);
         for(const [key,component] of members)if(!records.has(key)) {
             const family=supported[Number(component.componenttype)];issue(family,'A packaged component identity or definition was not returned.');
-            add({family,id:guid(component.objectid),key:null,name:`Unresolved ${family}`,table:'',membership:'explicit',definition:{complete:false,fingerprints:{},missing:['Metadata not returned']}});
+            add({family,id:guid(component.objectid),key:null,name:`Unresolved ${family}`,table:'',membership:'explicit',definition:{complete:false,fingerprints:{},missing:['Metadata not returned'],issues:[{code:'metadata_unavailable'}]}});
         }
         snapshot.components=[...records.values()];
         snapshot.inventoryCount=components.length;
