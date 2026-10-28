@@ -3159,6 +3159,10 @@ function rgDepIdentityKey(identity) {
     if (!identity?.kind) return null;
 
     switch (identity.kind) {
+        case "runtimeRecord":
+            return rgRuntimeName(identity.tableLogicalName) && rgRuntimeGuid(identity.recordId)
+                ? `runtime:${identity.tableLogicalName}:${normalizeGuid(identity.recordId)}` : null;
+
         case "table":
             return identity.logicalName ? `table:${rgDepLower(identity.logicalName)}` : null;
 
@@ -3614,6 +3618,177 @@ async function rgDepResolveEntityIdentities(items, resultMap) {
     }
 }
 
+// Organization-specific component codes must be discovered in each environment.
+// ObjectTypeCode + an exact record ID gives a name candidate. Verification also
+// requires the table's Solution Component Configuration registration.
+function rgRuntimeGuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalizeGuid(value)) && !rgDepZeroGuid(value);
+}
+function rgRuntimeName(value) { return /^[a-z][a-z0-9_]*$/i.test(value || ""); }
+function rgRuntimeLabel(meta) {
+    return meta.DisplayName?.UserLocalizedLabel?.Label || meta.DisplayName?.LocalizedLabels?.[0]?.Label || meta.LogicalName;
+}
+function rgRuntimeKeys(meta) {
+    const types = new Map((meta.Attributes || []).map(attr => [attr.LogicalName, attr.AttributeType]));
+    return (meta.Keys || []).filter(key => key.EntityKeyIndexStatus === "Active" && key.KeyAttributes?.length)
+        .map(key => key.KeyAttributes.map(name => ({ name, type: types.get(name) })))
+        .filter(fields => fields.every(field => rgRuntimeName(field.name) && ["String", "Uniqueidentifier", "Integer", "Boolean"].includes(field.type)));
+}
+function rgRuntimeKeyValues(meta, row) {
+    for (const fields of rgRuntimeKeys(meta)) {
+        const key = fields.map(field => ({ ...field, value: row[field.name] }));
+        if (key.every(field => rgRuntimeLiteral(field) !== null)) return key;
+    }
+    return null;
+}
+function rgRuntimeLiteral(field) {
+    if (!rgRuntimeName(field.name)) return null;
+    if (field.type === "String" && typeof field.value === "string" && field.value.length) return `'${escapeODataString(field.value)}'`;
+    if (field.type === "Uniqueidentifier" && rgRuntimeGuid(field.value)) return normalizeGuid(field.value);
+    if (field.type === "Integer" && Number.isSafeInteger(field.value)) return String(field.value);
+    if (field.type === "Boolean" && typeof field.value === "boolean") return String(field.value);
+    return null;
+}
+const RG_RUNTIME_META_SELECT = "MetadataId,ObjectTypeCode,LogicalName,EntitySetName,PrimaryIdAttribute,PrimaryNameAttribute,DisplayName";
+const RG_RUNTIME_META_EXPAND = "Attributes($select=LogicalName,AttributeType),Keys($select=KeyAttributes,EntityKeyIndexStatus)";
+async function rgRuntimeFetchMetadata(url, collection = false) {
+    const read = collection ? fetchAllPages : dataverseFetch;
+    try { return await read(url); }
+    catch (error) {
+        // Some organizations expose basic metadata without key/attribute expansion.
+        // Fallback can resolve names and exact IDs; it cannot invent unique keys.
+        const basic = new URL(url);
+        if (!basic.searchParams.has("$expand")) throw error;
+        basic.searchParams.delete("$expand");
+        return read(basic.toString());
+    }
+}
+async function rgRuntimeRegistered(meta) {
+    if (!rgRuntimeGuid(meta.MetadataId)) return false;
+    const rows = await fetchAllPages(`${window.location.origin}/api/data/v9.2/solutioncomponentconfigurations` +
+        `?$select=name,_entityid_value&$filter=${encodeURIComponent(`_entityid_value eq ${normalizeGuid(meta.MetadataId)}`)}`);
+    return rows.some(row => normalizeGuid(row._entityid_value) === normalizeGuid(meta.MetadataId));
+}
+function rgRuntimeDiagnostic(error) {
+    return [401, 403].includes(Number(error?.status))
+        ? { code: "access_denied", message: "Dataverse denied access to runtime metadata or component records. Check read permissions for this component table." }
+        : { code: "lookup_failed", message: "Runtime metadata or component lookup failed. No absence was inferred; retry the check or inspect table access." };
+}
+async function rgDepResolveRuntimeIdentities(items, resultMap, diagnostics = new Map()) {
+    const key = item => `${item.componentType}:${normalizeGuid(item.objectId)}`;
+    const selected = (items || []).filter(item => Number.isInteger(item.componentType) && item.componentType >= 10000 && rgRuntimeGuid(item.objectId) && !resultMap.has(key(item)));
+    if (!selected.length) return;
+    const types = [...new Set(selected.map(item => item.componentType))];
+    const metas = [];
+    for (const chunk of rg28Chunk(types, 16)) {
+        try {
+            metas.push(...await rgRuntimeFetchMetadata(`${window.location.origin}/api/data/v9.2/EntityDefinitions` +
+                `?$select=${RG_RUNTIME_META_SELECT}&$expand=${RG_RUNTIME_META_EXPAND}` +
+                `&$filter=${encodeURIComponent(chunk.map(type => `ObjectTypeCode eq ${type}`).join(" or "))}`, true));
+        } catch (error) {
+            selected.filter(item => chunk.includes(item.componentType)).forEach(item => diagnostics.set(key(item), rgRuntimeDiagnostic(error)));
+        }
+    }
+    for (const type of types) {
+        const group = selected.filter(item => item.componentType === type);
+        const candidates = metas.filter(meta => Number(meta.ObjectTypeCode) === type);
+        if (candidates.length !== 1) {
+            group.forEach(item => {
+                if (!diagnostics.has(key(item))) diagnostics.set(key(item), { code: candidates.length ? "ambiguous_metadata" : "metadata_unavailable",
+                    message: candidates.length ? "Multiple runtime tables matched this component code; no table was selected." : "No runtime table mapping was returned for this component code. It remains unverified." });
+            });
+            continue;
+        }
+        const meta = candidates[0];
+        if (![meta.LogicalName, meta.EntitySetName, meta.PrimaryIdAttribute].every(rgRuntimeName)) continue;
+        group.forEach(item => diagnostics.set(key(item), {
+            code: "record_not_returned", message: "The runtime table was identified, but its record name has not been resolved.",
+            componentTypeLabel: rgRuntimeLabel(meta), tableLogicalName: meta.LogicalName
+        }));
+        let registered = false;
+        try { registered = await rgRuntimeRegistered(meta); } catch (_) { /* Naming can succeed without verification permission. */ }
+        const remapped = group.filter(item => item.resolvedObjectId && normalizeGuid(item.resolvedObjectId) !== normalizeGuid(item.objectId));
+        const safeIds = new Map(group.map(item => [key(item), normalizeGuid(item.objectId)]));
+        for (const chunk of rg28Chunk(remapped, 16)) {
+            try {
+                const rows = await rgDepFetchByIds("solutioncomponents", "solutioncomponentid", chunk.map(item => item.objectId), "solutioncomponentid,objectid,componenttype");
+                for (const item of chunk) {
+                    if (rows.some(row => normalizeGuid(row.solutioncomponentid) === normalizeGuid(item.objectId) &&
+                        Number(row.componenttype) === type && normalizeGuid(row.objectid) === normalizeGuid(item.resolvedObjectId) && rgRuntimeGuid(row.objectid))) safeIds.set(key(item), normalizeGuid(item.resolvedObjectId));
+                }
+            } catch (_) { /* Original IDs remain valid candidates. */ }
+        }
+        const fields = [...new Set([meta.PrimaryIdAttribute,
+            ...(rgRuntimeName(meta.PrimaryNameAttribute) ? [meta.PrimaryNameAttribute] : []),
+            ...rgRuntimeKeys(meta).flatMap(keyFields => keyFields.map(field => field.name))])];
+        for (const chunk of rg28Chunk(group, 16)) {
+            try {
+                const rows = await rgDepFetchByIds(meta.EntitySetName, meta.PrimaryIdAttribute, chunk.map(item => safeIds.get(key(item))), fields.join(","));
+                for (const item of chunk) {
+                    const matches = rows.filter(row => normalizeGuid(row[meta.PrimaryIdAttribute]) === safeIds.get(key(item)));
+                    if (matches.length !== 1) {
+                        diagnostics.set(key(item), { ...diagnostics.get(key(item)), code: matches.length ? "ambiguous_record" : "record_not_returned", message: matches.length ? "Multiple records matched this ID; no identity was selected." : "The component table was identified, but its record was not returned. This is not proof of absence." });
+                        continue;
+                    }
+                    const row = matches[0];
+                    rgDepSetIdentity(resultMap, item, {
+                        kind: "runtimeRecord", tableLogicalName: meta.LogicalName,
+                        componentTypeLabel: rgRuntimeLabel(meta), displayName: row[meta.PrimaryNameAttribute] || null,
+                        recordId: normalizeGuid(row[meta.PrimaryIdAttribute]), alternateKey: rgRuntimeKeyValues(meta, row),
+                        componentMappingVerified: registered, confidence: registered ? "high" : "medium",
+                        // Custom record visibility can be security-trimmed. Never auto-block on absence.
+                        confirmMissingSafe: false
+                    });
+                    if (registered) diagnostics.delete(key(item));
+                    else diagnostics.set(key(item), { code: "registration_unverified", message: "The record name was found, but its solution-component table registration could not be verified. Target verification remains pending." });
+                }
+            } catch (error) { chunk.forEach(item => diagnostics.set(key(item), { ...diagnostics.get(key(item)), ...rgRuntimeDiagnostic(error) })); }
+        }
+    }
+}
+
+async function rgDepMatchTargetRuntimeRecords(identities, matches, checkInfo) {
+    const items = identities.filter(item => item.identity?.kind === "runtimeRecord");
+    const tables = [...new Set(items.map(item => item.identity.tableLogicalName).filter(rgRuntimeName))];
+    for (const table of tables) {
+        const group = items.filter(item => item.identity.tableLogicalName === table);
+        try {
+            const meta = await rgRuntimeFetchMetadata(`${window.location.origin}/api/data/v9.2/EntityDefinitions(LogicalName='${table}')` +
+                `?$select=${RG_RUNTIME_META_SELECT}&$expand=${RG_RUNTIME_META_EXPAND}`);
+            if (meta.LogicalName !== table || !rgRuntimeName(meta.EntitySetName) || !rgRuntimeName(meta.PrimaryIdAttribute) || !Number.isInteger(meta.ObjectTypeCode)) continue;
+            const registered = await rgRuntimeRegistered(meta);
+            for (const item of group) {
+                const identity = item.identity;
+                if (!registered || identity.componentMappingVerified !== true) {
+                    checkInfo.set(item.identityKey, { diagnostic: "Solution-component registration was not verified in both environments. The displayed name alone is not a verified match." });
+                    continue;
+                }
+                try {
+                    if (!rgRuntimeGuid(identity.recordId)) continue;
+                    const exact = await rgDepFetchByIds(meta.EntitySetName, meta.PrimaryIdAttribute, [identity.recordId], meta.PrimaryIdAttribute);
+                    let rows = exact;
+                    if (!rows.length) {
+                        const key = identity.alternateKey;
+                        const targetKeys = rgRuntimeKeys(meta);
+                        if (!Array.isArray(key) || !key.length || !key.every(field => rgRuntimeLiteral(field) !== null) ||
+                            !targetKeys.some(fields => fields.length === key.length && fields.every(field => key.some(source => source.name === field.name && source.type === field.type)))) {
+                            checkInfo.set(item.identityKey, { diagnostic: "The source record ID was not found, and no matching active unique key is available in the target. A display-name match would not prove identity." });
+                            continue;
+                        }
+                        const filter = key.map(field => `${field.name} eq ${rgRuntimeLiteral(field)}`).join(" and ");
+                        rows = await fetchAllPages(`${window.location.origin}/api/data/v9.2/${meta.EntitySetName}?$select=${meta.PrimaryIdAttribute}&$filter=${encodeURIComponent(filter)}`);
+                    }
+                    checkInfo.set(item.identityKey, { matchCount: rows.length,
+                        ...(rows.length === 0 ? { diagnostic: "No matching visible record was returned. Row security can hide records; verify read access and provisioning before deployment." } : {}) });
+                    if (rows.length === 1 && rgRuntimeGuid(rows[0][meta.PrimaryIdAttribute])) {
+                        matches.set(item.identityKey, { objectId: rows[0][meta.PrimaryIdAttribute], componentType: meta.ObjectTypeCode, matchType: "stableIdentity" });
+                    }
+                } catch (error) { checkInfo.set(item.identityKey, { diagnostic: rgRuntimeDiagnostic(error).message }); }
+            }
+        } catch (error) { group.forEach(item => checkInfo.set(item.identityKey, { diagnostic: rgRuntimeDiagnostic(error).message })); }
+    }
+}
+
 async function resolveDependencyIdentities(request) {
     try {
         const dependencies = request?.dependencies || [];
@@ -3635,6 +3810,7 @@ async function resolveDependencyIdentities(request) {
 
         const resultMap = new Map();
         const dependentMap = new Map();
+        const runtimeDiagnostics = new Map();
         const runResolverSafely = async (name, resolver) => {
             try { await resolver(); }
             catch (error) {
@@ -3648,6 +3824,7 @@ async function resolveDependencyIdentities(request) {
             await runResolverSafely(`${prefix} relationship`, () => rgDepResolveRelationshipIdentities(items.filter(x => [3, 10].includes(x.componentType)), map));
             await runResolverSafely(`${prefix} choice`, () => rgDepResolveChoiceIdentities(items.filter(x => x.componentType === 9), map));
             await runResolverSafely(`${prefix} entity`, () => rgDepResolveEntityIdentities(items, map));
+            await runResolverSafely(`${prefix} runtime`, () => rgDepResolveRuntimeIdentities(items, map, runtimeDiagnostics));
         };
 
         await resolveSet(requiredItems, resultMap, "required");
@@ -3668,6 +3845,7 @@ async function resolveDependencyIdentities(request) {
                 resolvedObjectId: hydrated?.resolvedObjectId || item.objectId,
                 resolvedParentId: hydrated?.resolvedParentId || item.raw?.requiredcomponentparentid || null,
                 identity,
+                identityResolution: runtimeDiagnostics.get(key) || null,
                 identityKey: rgDepIdentityKey(identity),
                 requiredBy: {
                     objectId: item.raw?.dependentcomponentobjectid || null,
@@ -3866,6 +4044,8 @@ async function matchTargetDependencyIdentities(sourceDependencies) {
     await runMatcherSafely("choice", () => rgDepMatchTargetChoices(identities, matches, checkInfo));
     await runMatcherSafely("entity", () => rgDepMatchTargetEntitySets(identities, matches, checkInfo));
 
+    await runMatcherSafely("runtime", () => rgDepMatchTargetRuntimeRecords(identities, matches, checkInfo));
+
     const matched = identities.map(item => {
         const match = matches.get(item.identityKey);
         return match ? {
@@ -3894,7 +4074,8 @@ async function matchTargetDependencyIdentities(sourceDependencies) {
         const info = checkInfo.get(item.identityKey);
         if (!info) return;
         if (info.matchCount === 0) {
-            if (item.identity?.confirmMissingSafe === true) safeMissingIdentityKeys.push(item.identityKey);
+            if (item.identity?.kind === "runtimeRecord") return;
+            if (item.identity?.confirmMissingSafe === true && item.identity?.kind !== "runtimeRecord") safeMissingIdentityKeys.push(item.identityKey);
             else possibleMissingIdentityKeys.push(item.identityKey);
         }
         else if (info.matchCount > 1) {
@@ -3907,7 +4088,11 @@ async function matchTargetDependencyIdentities(sourceDependencies) {
             ...item,
             providers: providerMap.get(`${item.componentType}:${normalizeGuid(item.objectId)}`)?.providers || []
         })),
-        checkedIdentityKeys: [...checkInfo.keys()],
+        diagnostics: identities.filter(item => checkInfo.get(item.identityKey)?.diagnostic).map(item => ({
+            sourceObjectId: item.objectId, sourceComponentType: item.componentType,
+            message: checkInfo.get(item.identityKey).diagnostic
+        })),
+        checkedIdentityKeys: [...checkInfo.entries()].filter(([, info]) => Number.isInteger(info.matchCount)).map(([key]) => key),
         safeMissingIdentityKeys,
         possibleMissingIdentityKeys,
         ambiguousIdentityKeys
@@ -4136,6 +4321,16 @@ async function getDependencyDisplayNames(request) {
     await resolveMetadata(hydrated.map(item => ({ ...item,
         resolvedObjectId: safeRemapped.some(safe => key(safe) === key(item)) ? item.resolvedObjectId : item.objectId
     })));
+    const runtimeMap = new Map();
+    const runtimeDiagnostics = new Map();
+    await rgDepResolveRuntimeIdentities(hydrated, runtimeMap, runtimeDiagnostics);
+    for (const [key, identity] of runtimeMap) {
+        if (identity.displayName) identities[key] = { name: identity.displayName, context: identity.componentTypeLabel || identity.tableLogicalName };
+        const type = Number(key.split(":")[0]);
+        if (identity.componentTypeLabel) typeLabels[type] = identity.componentTypeLabel;
+        delete diagnostics[key];
+    }
+    for (const [key, diagnostic] of runtimeDiagnostics) if (!identities[key]) diagnostics[key] = diagnostic;
     // Runtime labels identify unknown types without inventing record mappings.
     if (items.length) {
         try {

@@ -14332,6 +14332,9 @@ function rg282BuildDependencyComparison(
         ambiguousIdentityKeys: []
     };
 
+    const runtimeDiagnostics = new Map((semanticResult.diagnostics || []).map(item => [
+        `${Number(item.sourceComponentType)}:${String(item.sourceObjectId || "").toLowerCase()}`, item.message
+    ]));
     const semanticMap = new Map(
         (semanticResult.matches || []).map(item => [
             `${Number(item.sourceComponentType)}:${String(item.sourceObjectId || "").toLowerCase()}`,
@@ -14458,7 +14461,7 @@ function rg282BuildDependencyComparison(
                 ...dependency,
                 targetChecked: true,
                 verificationState: "unresolved",
-                verificationReason: "The target check completed but did not produce a conclusive unique match."
+                verificationReason: runtimeDiagnostics.get(sourceKey) || "The target check completed but did not produce a conclusive unique match."
             });
             return;
         }
@@ -14467,9 +14470,9 @@ function rg282BuildDependencyComparison(
             ...dependency,
             targetChecked: false,
             verificationState: "unresolved",
-            verificationReason: dependency.identityKey
+            verificationReason: runtimeDiagnostics.get(sourceKey) || dependency.identityResolution?.message || (dependency.identityKey
                 ? "Release Guardian could not complete a conclusive target lookup for this identity."
-                : "Release Guardian could not resolve a stable identity for this Dataverse component."
+                : "Release Guardian could not resolve a stable identity for this Dataverse component.")
         });
     });
 
@@ -14911,6 +14914,8 @@ function rg282DependencyIdentityLabel(dependency) {
         identity.logicalName,
         identity.schemaName,
         identity.typeName,
+        identity.componentTypeLabel,
+        dependency?.identityResolution?.componentTypeLabel,
         componentTypeName
     ];
 
@@ -14945,7 +14950,7 @@ function rg282HumanDependencyCard(dependency, status) {
     const requiredBy = rg282RequiredByLabel(dependency);
     if (componentName === "Unknown Dependency") componentName = requiredBy
         ? `Prerequisite for ${requiredBy}` : `Unidentified prerequisite · Type ${dependency?.componentType ?? "unknown"}`;
-    const knownType = RG_COMPONENT_TYPES[dependency?.componentType] || null;
+    const knownType = RG_COMPONENT_TYPES[dependency?.componentType] || dependency?.identity?.componentTypeLabel || dependency?.identityResolution?.componentTypeLabel || null;
     const sourceId = dependency?.objectId || null;
     const resolvedSourceId = dependency?.resolvedObjectId || null;
     const targetId = dependency?.targetObjectId || null;
@@ -15002,8 +15007,10 @@ function rg282HumanDependencyCard(dependency, status) {
                 <dl>
                     <div><dt>Component Type</dt><dd>${rgEscapeHtml(String(dependency?.componentType ?? "Unknown"))}</dd></div>
                     ${identityConfidence ? `<div><dt>Identity Confidence</dt><dd>${rgEscapeHtml(String(identityConfidence))}</dd></div>` : ""}
+                    ${dependency?.identity?.kind === "runtimeRecord" ? `<div><dt>Runtime component registration</dt><dd>${dependency.identity.componentMappingVerified ? "Verified" : "Not verified"}</dd></div>
+                    <div><dt>Active unique key fields</dt><dd>${rgEscapeHtml((dependency.identity.alternateKey || []).map(field => field.name).join(", ") || "None available; matching names alone are insufficient")}</dd></div>` : ""}
                     <div><dt>Match Method</dt><dd>${rgEscapeHtml(matchMethod)}</dd></div>
-                    ${dependency?.identity?.tableLogicalName ? `<div><dt>Parent Table</dt><dd><code>${rgEscapeHtml(dependency.identity.tableLogicalName)}</code></dd></div>` : ""}
+                    ${dependency?.identity?.tableLogicalName ? `<div><dt>${dependency.identity.kind === "runtimeRecord" ? "Component Table" : "Parent Table"}</dt><dd><code>${rgEscapeHtml(dependency.identity.tableLogicalName)}</code></dd></div>` : ""}
                     ${dependency?.identity?.logicalName ? `<div><dt>Logical Name</dt><dd><code>${rgEscapeHtml(dependency.identity.logicalName)}</code></dd></div>` : ""}
                     ${dependency?.identity?.schemaName ? `<div><dt>Schema Name</dt><dd><code>${rgEscapeHtml(dependency.identity.schemaName)}</code></dd></div>` : ""}
                     ${provider ? `<div><dt>Provider Solution</dt><dd>${rgEscapeHtml(provider)}</dd></div>` : ""}
