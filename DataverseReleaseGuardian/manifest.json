@@ -22,7 +22,7 @@
         "https://*.dynamics.com/*",
         "https://*.crm.dynamics.com/*"
       ],
-      "js": [ "content.js" ]
+      "js": [ "release-diff.js", "content.js", "release-diff-content.js" ]
     }
   ],
   "side_panel": {

@@ -37,6 +37,7 @@ const rgWorkflow = {
         this.element('rgAppNavigation').setAttribute('aria-label', 'Release analysis');
         this.element('solutionSelect').setAttribute('aria-label', 'Source solution');
         this.element('solutionSelect').addEventListener('change', () => this.refreshContext());
+        if (typeof rgReleaseDiffUI !== 'undefined') rgReleaseDiffUI.initialize();
         this.refreshContext();
         this.connect();
     },
@@ -333,6 +334,7 @@ const rgWorkflow = {
     },
     invalidateTarget() {
         this.contextRevision++;
+        if (typeof rgReleaseDiffUI !== 'undefined') rgReleaseDiffUI.invalidate();
         rg28LastComparison = null;
         this.targetBusy = false;
         rgUniqueMissingComponents = rgUniqueMissingComponents.map(item => ({ ...item, targetStatus: undefined }));
@@ -379,8 +381,8 @@ const rgWorkflow = {
         const heading = this.element('rgScreenReadiness')?.querySelector('.rg-screen-header');
         if (heading) {
             heading.querySelector('h2').textContent = 'Deployment readiness';
-            heading.querySelector('p').textContent = comparison
-                ? `${rg282GetSourceSolution()?.friendlyname || 'Source solution'} → ${this.element('rg28TargetTabSelect')?.selectedOptions[0]?.textContent || 'Target'}`
+            heading.querySelector('p').textContent = rg28TargetSolutionId && typeof rgReleaseDiffUI !== 'undefined'
+                ? `${rg282GetSourceSolution()?.friendlyname || 'Source solution'} · ${rgReleaseDiffUI.direction()}`
                 : 'Choose a destination to verify prerequisites before deployment.';
         }
 
@@ -410,5 +412,6 @@ const rgWorkflow = {
             rg282UpdateCompareButton();
             this.element('rg28RunPreflight').disabled ||= this.targetBusy || !this.sourceReady;
         }
+        if (typeof rgReleaseDiffUI !== 'undefined') rgReleaseDiffUI.refresh();
     }
 };

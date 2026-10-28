@@ -13915,17 +13915,17 @@ function rg282RenderDirectSolutionComparison(
             </span>
 
             <h3>
-                DEV vs Target Package Contents
+                Source vs Target Package Counts
             </h3>
 
             <p class="rg282-section-explainer">
-                Compares what is packaged inside the selected DEV and target solutions.
+                Compares the component counts in the selected source and target solutions.
                 This is separate from dependency readiness below.
             </p>
 
 
             <div class="rg282-comparison-table">
-
+                <div class="rg282-comparison-row rg-release-count-header"><strong>Type</strong><strong>Source</strong><span></span><strong>Target</strong><strong>Count</strong></div>
                 ${rg282ComparisonRow(
         "Tables",
         sourceCounts.tables,

@@ -4359,6 +4359,10 @@ async function handleReleaseGuardianMessage(
     request?.action
     ) {
 
+        case "getReleaseDiffSnapshot":
+
+            return getReleaseDiffSnapshot(request);
+
         case "getDependencyDisplayNames":
 
             return getDependencyDisplayNames(request);
