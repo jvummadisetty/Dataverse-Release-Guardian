@@ -25,6 +25,7 @@ const rgWorkflow = {
         this.buildOverview();
         this.buildReadiness();
         this.buildInspector();
+        this.buildColumnSummaryHelp();
         const labels = { home: 'Setup', solution: 'Overview', explorer: 'Explore', readiness: 'Readiness' };
         document.querySelectorAll('.rg-nav-button').forEach(button => {
             button.type = 'button';
@@ -47,6 +48,65 @@ const rgWorkflow = {
         node.querySelector('h2').textContent = title;
         node.querySelector('p').textContent = description;
         node.querySelector('h2').tabIndex = -1;
+    },
+    buildColumnSummaryHelp() {
+        const help = [
+            ['totalTableColumnCount', 'Total columns', 'All columns returned for this table, including standard and custom columns. This total is not limited to columns explicitly added to the selected solution.'],
+            ['includedColumnCount', 'Explicit components', 'Columns listed individually as column components in the selected solution. Zero does not mean no columns are included: they may be included through the parent table.'],
+            ['effectiveColumnCount', 'Effective included', 'Columns treated as included by the current solution membership analysis: explicitly added columns plus columns included through the parent table. This is not a count of changed columns or a prediction of import changes.']
+        ];
+        let active = null, hideTimer;
+        const close = () => {
+            clearTimeout(hideTimer);
+            if (!active) return;
+            active.tip.hidden = true;
+            active.button.setAttribute('aria-expanded', 'false');
+            active = null;
+        };
+        for (const [id, label, text] of help) {
+            const metric = this.element(id)?.parentElement;
+            if (!metric) continue;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'rg-metric-help';
+            button.textContent = 'i';
+            button.setAttribute('aria-label', `About ${label.toLowerCase()}`);
+            button.setAttribute('aria-expanded', 'false');
+            const tip = document.createElement('span');
+            tip.id = `${id}Help`;
+            tip.className = 'rg-metric-tooltip';
+            tip.setAttribute('role', 'tooltip');
+            tip.textContent = text;
+            tip.hidden = true;
+            button.setAttribute('aria-describedby', tip.id);
+            metric.querySelector('span').append(button);
+            document.body.append(tip);
+            const show = () => {
+                clearTimeout(hideTimer);
+                close();
+                tip.hidden = false;
+                active = {tip, button};
+                button.setAttribute('aria-expanded', 'true');
+                const rect = button.getBoundingClientRect();
+                const width = tip.getBoundingClientRect().width;
+                tip.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
+                const height = tip.getBoundingClientRect().height;
+                tip.style.top = `${Math.max(12, rect.bottom + height + 12 <= window.innerHeight ? rect.bottom + 8 : rect.top - height - 8)}px`;
+            };
+            metric.addEventListener('pointerenter', show);
+            metric.addEventListener('pointerleave', () => { if (document.activeElement !== button) hideTimer = setTimeout(close, 180); });
+            button.addEventListener('focus', show);
+            button.addEventListener('blur', close);
+            button.addEventListener('click', show);
+            tip.addEventListener('pointerenter', show);
+            tip.addEventListener('pointerleave', () => { if (document.activeElement !== button) hideTimer = setTimeout(close, 180); });
+        }
+        document.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
+        document.addEventListener('pointerdown', event => {
+            if (active && !active.button.contains(event.target) && !active.tip.contains(event.target)) close();
+        });
+        window.addEventListener('scroll', close, true);
+        window.addEventListener('resize', close);
     },
     buildHome() {
         this.heading('rgScreenHome', 'Start with a solution', 'Your current Dynamics session connects securely. Choose the solution you want to review.');
