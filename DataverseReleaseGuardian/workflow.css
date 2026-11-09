@@ -481,3 +481,49 @@ body.rg-workflow { color-scheme: light; background: #fafafa; -webkit-font-smooth
     .rg-workflow .rg-screen-header h2 { font-size: 21px !important; }
     .rg-workflow .rg-nav-button { font-size: 10px !important; }
 }
+
+/* Complete the visual system for the original table and column inspectors. */
+body.rg-workflow { background: #f7f9fc; }
+.rg-workflow .rg26-brand-header { padding-bottom: 0; }
+.rg-workflow .rg-app-navigation { margin-bottom: 22px; border-color: #e5eaf1; box-shadow: 0 2px 8px #16365b04; }
+.rg-workflow .rg-flow-session { padding: 16px; margin: 0 0 16px; background: #edf5fd; border: 1px solid #dceafa; border-radius: 12px; }
+.rg-workflow .rg-flow-session .rg-flow-eyebrow { color: #52677e; font-size: 10px; letter-spacing: .9px; }
+.rg-workflow .rg-flow-session strong { color: #17456e; font-weight: 600; }
+.rg-workflow .rg-flow-session p { color: #52677e; margin-bottom: 0; }
+.rg-workflow .card { border-color: #e5eaf1; border-radius: 12px; box-shadow: 0 2px 8px #16365b03; }
+.rg-workflow .primary-button { box-shadow: 0 2px 4px #0f6cbd15; }
+.rg-workflow #tableInspector > h2, .rg-workflow #columnInspector > h2 { font-size: 22px !important; font-weight: 600; margin: 18px 0 4px; letter-spacing: -.4px; }
+.rg-workflow :is(.logical-name,#tableInspectorStatus,#columnStatus) { color: #616c7b; font-size: 12px; line-height: 1.6; }
+.rg-workflow :is(#backToTablesButton,#backToTableButton,#backToExplorerButton) { width: auto; background: #fff; border-color: #e0e5ed; color: #424f60; min-height: 34px; padding: 7px 12px; }
+.rg-workflow .component-dashboard { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 18px 0 22px; }
+.rg-workflow .component-dashboard-button { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 8px; min-width: 0; min-height: 76px; padding: 12px; text-align: left; border: 1px solid #e5eaf1; border-radius: 9px; background: #fafbfd; color: #526174; cursor: pointer; transition: background .15s, border-color .15s; }
+.rg-workflow .component-dashboard-button span { font-size: 12px; line-height: 1.35; }
+.rg-workflow .component-dashboard-button strong { font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; color: #25374b; }
+.rg-workflow .component-dashboard-button:hover { background: #f0f6fc; border-color: #b4d6fa; }
+.rg-workflow .component-dashboard-button.active-component-button { background: #ebf3fc; border-color: #0f6cbd; color: #0f6cbd; }
+.rg-workflow .component-dashboard-button.active-component-button strong { color: #0f6cbd; }
+.rg-workflow .table-component-section > h3 { font-size: 16px; font-weight: 600; margin: 20px 0 6px; }
+.rg-workflow .column-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 14px 0; }
+.rg-workflow .column-summary > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border: 0; background: #f5f7fa; border-radius: 8px; padding: 12px; text-align: left; min-width: 0; }
+.rg-workflow .column-summary span { color: #616c7b; font-size: 11px !important; line-height: 1.4; }
+.rg-workflow .column-summary strong { color: #25374b; font-size: 20px !important; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rg-workflow .search-input { display: block; width: 100%; min-height: 40px; margin: 14px 0 10px; padding: 10px 12px; font-size: 13px; }
+.rg-workflow .filter-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 10px 0 16px; }
+.rg-workflow .filter-button { appearance: none; display: inline-flex; align-items: center; min-height: 34px; padding: 7px 12px; border: 1px solid #e0e5ed; border-radius: 18px; background: #fff; color: #526174; font-size: 12px; cursor: pointer; }
+.rg-workflow .filter-button:hover { background: #f5f8fc; border-color: #b4d6fa; }
+.rg-workflow .filter-button.active-filter { color: #0f6cbd; background: #ebf3fc; border-color: #0f6cbd; font-weight: 600; }
+.rg-workflow .component-list { display: grid; gap: 8px; }
+.rg-workflow .component-row { width: 100%; min-width: 0; padding: 14px; background: #fff; border: 1px solid #e5eaf1; border-radius: 9px; text-align: left; box-shadow: none; overflow-wrap: anywhere; }
+.rg-workflow .component-row-clickable { cursor: pointer; }
+.rg-workflow .component-row-clickable:hover { background: #f5f9fd; border-color: #b4d6fa; transform: none; }
+.rg-workflow .component-row strong { color: #25374b; font-size: 13px !important; font-weight: 600; line-height: 1.5; }
+.rg-workflow .component-row small { color: #616c7b; font-size: 11px !important; line-height: 1.6; }
+.rg-workflow .component-row p { margin: 5px 0; font-size: 12px; color: #526174; }
+.rg-workflow .rg27-explorer-card { border-color: #e5eaf1; border-radius: 10px; }
+@media (max-width: 420px) {
+    .rg-workflow .component-dashboard { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .rg-workflow .component-dashboard-button { min-height: 68px; padding: 10px 12px; }
+    .rg-workflow .column-summary { gap: 5px; }
+    .rg-workflow .column-summary > div { padding: 9px; }
+    .rg-workflow .column-summary span { font-size: 10px !important; }
+}
