@@ -527,3 +527,10 @@ body.rg-workflow { background: #f7f9fc; }
     .rg-workflow .column-summary > div { padding: 9px; }
     .rg-workflow .column-summary span { font-size: 10px !important; }
 }
+
+/* Column membership explanations: hover, focus or tap the info control. */
+.rg-workflow .column-summary > div > span { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.rg-workflow .rg-metric-help { display: inline-grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; padding: 0; border: 1px solid #c4d3e4; border-radius: 50%; background: #fff; color: #0f6cbd; font: 600 12px Arial, sans-serif; cursor: help; }
+.rg-workflow .rg-metric-help:hover { background: #ebf3fc; border-color: #0f6cbd; }
+.rg-workflow .rg-metric-tooltip { position: fixed; z-index: 1000; width: 290px; max-width: calc(100vw - 24px); padding: 12px 14px; border: 1px solid #dce5ef; border-radius: 8px; background: #fff; box-shadow: 0 4px 16px #16365b20; color: #334155; font: 12px/1.6 "Segoe UI", Arial, sans-serif; overflow-wrap: anywhere; }
+.rg-workflow .rg-metric-tooltip[hidden] { display: none; }
