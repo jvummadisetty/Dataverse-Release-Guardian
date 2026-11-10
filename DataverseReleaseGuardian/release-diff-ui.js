@@ -5,9 +5,9 @@ const rgReleaseDiffUI = {
     initialize(){
         if(this.element('rgScreenDiff'))return;
         const screen=document.createElement('div');screen.id='rgScreenDiff';screen.className='rg-screen';screen.dataset.screen='diff';screen.style.display='none';
-        screen.innerHTML=`<div class="rg-screen-header"><h2 tabindex="-1">Release Diff</h2><p>What differs between the selected solutions?</p></div>
+        screen.innerHTML=`<div class="rg-screen-header"><h2 tabindex="-1">Release Diff</h2><p>Compare component definitions in the source and destination.</p></div>
             <section class="card rg-release-context"><div id="rgReleaseDirection" class="rg-release-direction"></div>
-                <p class="rg-flow-note">Solution components · covered live effective definitions. Import effects can vary with solution layers.</p>
+                <p class="rg-flow-note">Compares current definitions in both environments. This is not a preview of the solution import.</p>
                 <div class="rg-flow-actions"><button id="rgReleaseRun" class="primary-button" type="button" disabled>Compare release contents</button>
                 <button id="rgReleaseChooseTarget" class="secondary-button" type="button">Choose destination</button></div>
                 <p id="rgReleaseStatus" role="status" aria-live="polite">Choose a source and target solution to begin.</p></section>
@@ -86,6 +86,7 @@ const rgReleaseDiffUI = {
         const diagnostics=[...(this.snapshots.source.diagnostics || []).map(item=>`Source: ${item.message}`),...(this.snapshots.target.diagnostics || []).map(item=>`Target: ${item.message}`)];
         const differentPackages=this.snapshots.source.solution.uniquename!==this.snapshots.target.solution.uniquename;
         const canFilterChanges=['changed','matched'].includes(this.filter);
+        const categoryHelp={changed:'Matched components with differences in the properties we compared.',matched:'Components identified in both solutions. Their definitions may still differ or be incomplete.',sourceOnly:'Found only in the selected source solution. This does not prove absence from the destination environment.',targetOnly:'Found only in the selected destination solution. This does not predict a deletion during import.',notCompared:'Identity or definition coverage was incomplete. No equality or absence was established.'};
         const option=(value,label,selected)=>`<option value="${esc(value)}"${value===selected?' selected':''}>${esc(label)}</option>`;
         const tables=[...new Set(base.flatMap(review.tables))].sort();
         const properties=[...new Set(base.flatMap(row=>row.changes || []))].sort();
@@ -112,8 +113,8 @@ const rgReleaseDiffUI = {
         container.hidden=false;
         container.innerHTML=`<h3>Release contents</h3>
             ${differentPackages?'<p class="rg-flow-config-count">Different solution unique names are selected. This compares two different packages.</p>':''}
-            <p class="rg-flow-note">Changed is a subset of Matched. Matching identities does not mean their definitions are identical. “Only” refers to selected-solution membership, not environment-wide absence or an import/delete prediction.</p>
-            <div class="rg-release-filters" aria-label="Release diff categories">${Object.entries(categories).map(([key,label])=>`<button id="rgReleaseCategory-${key}" type="button" data-release-filter="${key}" aria-pressed="${key===this.filter}">${label} <strong>${result[key].length}</strong></button>`).join('')}</div>
+            <p class="rg-flow-note">Changed components also appear under Matched. Source only and Target only describe the selected solutions, not the entire environment. Not compared means the available evidence was insufficient.</p>
+            <div class="rg-release-filters" aria-label="Release diff categories">${Object.entries(categories).map(([key,label])=>`<button id="rgReleaseCategory-${key}" type="button" data-release-filter="${key}" title="${esc(categoryHelp[key])}" aria-pressed="${key===this.filter}">${label} <strong>${result[key].length}</strong></button>`).join('')}</div>
             ${summary}
             <div class="rg-release-review-controls">
                 <label class="rg-release-search">Search components<input id="rgReleaseSearch" type="search" placeholder="Name, table, ID or property" value="${esc(this.facets.query)}" /></label>

@@ -553,3 +553,12 @@ body.rg-workflow { background: #f7f9fc; }
 .rg-workflow .rg-all-components > summary { cursor: pointer; font-size: 15px; font-weight: 600; padding: 2px 0; scroll-margin-top: 95px; }
 .rg-workflow .rg-all-components[open] > summary { margin-bottom: 12px; }
 .rg-workflow .rg-all-components > .rg-flow-link { margin: 0 0 10px; }
+
+/* Phase 1: findings first, supporting technical evidence on demand. */
+.rg-workflow .rg-check-coverage { background: #edf5fd; border: 1px solid #dceafa; border-radius: 10px; padding: 14px 16px; margin: 0 0 18px; color: #334155; }
+.rg-workflow .rg-check-coverage > strong { font-size: 13px; font-weight: 600; }
+.rg-workflow .rg-check-coverage p { font-size: 12px; line-height: 1.6; margin: 6px 0; }
+.rg-workflow .rg-check-coverage summary { cursor: pointer; color: #0f6cbd; font-size: 12px; padding: 6px 0 0; }
+.rg-workflow .rg-inventory-evidence { margin-top: 6px; }
+.rg-workflow .rg-inventory-evidence > summary { color: #616c7b; font-size: 11px; cursor: pointer; }
+.rg-workflow .rg-inventory-evidence[open] { padding-bottom: 5px; }

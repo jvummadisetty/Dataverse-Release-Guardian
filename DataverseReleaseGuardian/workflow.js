@@ -52,8 +52,8 @@ const rgWorkflow = {
     buildColumnSummaryHelp() {
         const help = [
             ['totalTableColumnCount', 'Total columns', 'All columns returned for this table, including standard and custom columns. This total is not limited to columns explicitly added to the selected solution.'],
-            ['includedColumnCount', 'Explicit components', 'Columns listed individually as column components in the selected solution. Zero does not mean no columns are included: they may be included through the parent table.'],
-            ['effectiveColumnCount', 'Effective included', 'Columns treated as included by the current solution membership analysis: explicitly added columns plus columns included through the parent table. This is not a count of changed columns or a prediction of import changes.']
+            ['includedColumnCount', 'Added individually', 'Columns listed individually as column components in the selected solution. Zero does not mean no columns are included: they may be included through the parent table.'],
+            ['effectiveColumnCount', 'Included in solution', 'Columns treated as included by the current solution membership analysis: explicitly added columns plus columns included through the parent table. This is not a count of changed columns or a prediction of import changes.']
         ];
         let active = null, hideTimer;
         const close = () => {
@@ -158,7 +158,14 @@ const rgWorkflow = {
         this.element('rgFlowChangeSolution').addEventListener('click', () => rgShowScreen('home'));
         this.element('analysisStatus').setAttribute('role', 'status');
         this.element('analysisStatus').setAttribute('aria-live', 'polite');
-        this.element('analysisCard').querySelector('h2').textContent = 'Package inventory';
+        this.element('analysisCard').querySelector('h2').textContent = 'Solution inventory';
+        const labels={totalComponents:'Inventory records',workflowCount:'Workflows & processes',otherCount:'Other component types'};
+        for(const [id,label] of Object.entries(labels)) {
+            const span=this.element(id)?.parentElement.querySelector('span');
+            if(span)span.textContent=label;
+        }
+        this.element('filterIncludedColumns').textContent='Included in solution';
+        this.element('filterNotIncludedColumns').textContent='Not included';
         this.heading('rgScreenExplorer', 'Explore components', 'Choose a component type to inspect names, usage and dependencies.');
     },
     compactOverview() {
@@ -187,6 +194,9 @@ const rgWorkflow = {
         this.heading('rgScreenReadiness', 'Check deployment readiness', 'Verify prerequisites in the destination environment before deployment.');
         rg28CreateTargetComparisonPanel();
         const screen = this.element('rgScreenReadiness');
+        const scope=document.createElement('aside');scope.id='rgReadinessCoverage';scope.className='rg-check-coverage';
+        scope.innerHTML='<strong>Prerequisite check</strong><p>Checks whether required components can be verified in the destination. Managed-layer conflicts and upgrade deletions are not checked.</p><details><summary>What this check covers</summary><p>Verified means a prerequisite was found using the available identity evidence. Not verified means the check was inconclusive. Confirmed missing requires conclusive absence evidence.</p><p>READY means no blocking prerequisite was detected. It does not guarantee a successful import. Connection authentication, flow execution, role privileges, managed layers and upgrade removals require separate validation.</p></details>';
+        screen.querySelector('.rg-screen-header').after(scope);
         const guide = document.createElement('section');
         guide.className = 'rg-flow-readiness-guide';
         guide.innerHTML = `<span class="rg-flow-eyebrow">TARGET VERIFICATION</span>
@@ -265,8 +275,8 @@ const rgWorkflow = {
         tabs.className = 'rg-flow-evidence-tabs';
         tabs.setAttribute('role', 'tablist');
         tabs.setAttribute('aria-label', 'Column evidence');
-        tabs.innerHTML = `<button id="rgFlowUsageTab" type="button" role="tab" aria-controls="rgFlowUsagePanel" aria-selected="true">Definition references</button>
-            <button id="rgFlowGraphTab" type="button" role="tab" aria-controls="rgFlowGraphPanel" aria-selected="false" tabindex="-1">Dataverse graph</button>`;
+        tabs.innerHTML = `<button id="rgFlowUsageTab" type="button" role="tab" aria-controls="rgFlowUsagePanel" aria-selected="true">Definition usage</button>
+            <button id="rgFlowGraphTab" type="button" role="tab" aria-controls="rgFlowGraphPanel" aria-selected="false" tabindex="-1">Dataverse dependencies</button>`;
         references.before(tabs);
         const usage = document.createElement('section');
         usage.id = 'rgFlowUsagePanel';
@@ -380,7 +390,7 @@ const rgWorkflow = {
         panel.id='rgAllSolutionComponents';panel.className='card rg-all-components';
         const heading=document.createElement('summary');heading.textContent='All solution components';panel.append(heading);
         const scope=document.createElement('p');scope.className='rg-flow-note';
-        scope.textContent=`${components.length} normalized inventory records, including table subcomponents. Power Apps groups top-level objects differently, so its All count may differ. Workflow / Process includes more than cloud flows. Visibility here does not imply definition-comparison support.`;
+        scope.textContent=`${components.length} solution records, including table subcomponents. Power Apps groups these objects differently. Workflows & processes includes cloud flows and other process types. Listing a component does not mean its definition can be compared.`;
         panel.append(scope);
         const groups=new Map();
         for(const component of components) {
@@ -405,8 +415,11 @@ const rgWorkflow = {
                 const nodes=batch.map(row=>{
                     const node=document.createElement('div');node.className='rg-inventory-row';
                     const name=document.createElement('strong');name.textContent='Name not resolved';
-                    const technical=document.createElement('small');technical.textContent=`Type ${type} · ${row.objectid || row.solutioncomponentid || 'ID unavailable'}`;
-                    node.append(name,technical);body.append(node);return name;
+                    const evidence=document.createElement('details');evidence.className='rg-inventory-evidence';
+                    const toggle=document.createElement('summary');toggle.textContent='Technical details';
+                    const technical=document.createElement('small');technical.textContent=`Component type: ${type} · ID: ${row.objectid || row.solutioncomponentid || 'Unavailable'}`;
+                    evidence.append(toggle,technical);
+                    node.append(name,evidence);body.append(node);return name;
                 });
                 if(shown<rows.length){more.textContent=`Show more (${rows.length-shown} remaining)`;body.append(more);}
                 const dependencies=batch.filter(row=>row.objectid).map(row=>({componentType:type,objectId:row.objectid}));

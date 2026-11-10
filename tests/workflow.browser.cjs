@@ -475,6 +475,8 @@ async function mockChrome() {
             document.getElementById('rgAllSolutionComponents').style.display='block';
             document.getElementById('rgScreenSolution').style.display='block';
         });
+        assert.ok((await page.locator('#rgReadinessCoverage').textContent()).includes('Managed-layer conflicts and upgrade deletions are not checked.'));
+        assert.equal(await page.locator('#filterIncludedColumns').textContent(),'Included in solution');
         const inventory=page.locator('#rgAllSolutionComponents');
         assert.equal(await inventory.evaluate(el=>el.open),false);
         await inventory.locator(':scope > summary').click();
@@ -491,6 +493,8 @@ async function mockChrome() {
         await references.getByRole('button',{name:'Show more (38 remaining)'}).click();
         await references.getByRole('button',{name:'Show more (13 remaining)'}).click();
         assert.equal(await references.locator('.rg-inventory-row').count(),63);
+        assert.equal(await references.locator('.rg-inventory-evidence[open]').count(),0);
+        assert.equal(await references.locator('.rg-inventory-evidence').count(),63);
         await page.evaluate(()=>rgWorkflow.renderAllComponents([]));
         assert.equal(await page.locator('#rgAllSolutionComponents').count(),0);
         console.log('PASS: automatic setup; analysis loading/success/failure and navigation; explorer; source/target distinction; target auto-connect, retry, stale callbacks and source-tab pinning; evidence tabs; solution reset; source failure; 320/420/700px layouts; splash preservation; no browser errors.');
