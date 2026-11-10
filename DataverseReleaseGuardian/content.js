@@ -3820,6 +3820,45 @@ async function rgDepMatchTargetRuntimeRecords(identities, matches, checkInfo) {
     }
 }
 
+// Source-side explanations only. These names/access flags never establish target readiness.
+async function rgDepDescribeRequiredBy(items, map) {
+    const key=item=>`${item.componentType}:${normalizeGuid(item.objectId)}`;
+    const permissions=items.filter(item=>Number(item.componentType)===71 || map.get(key(item))?.tableLogicalName==='fieldpermission');
+    for(const chunk of rg28Chunk(permissions,20)) {
+        try {
+            const rows=await rgDepFetchByIds('fieldpermissions','fieldpermissionid',chunk.map(item=>item.resolvedObjectId || item.objectId),
+                'fieldpermissionid,entityname,attributelogicalname,_fieldsecurityprofileid_value,canread,cancreate,canupdate');
+            const profileIds=[...new Set(rows.map(row=>row._fieldsecurityprofileid_value).filter(rgRuntimeGuid))];
+            let profiles=[];
+            try { if(profileIds.length)profiles=await rgDepFetchByIds('fieldsecurityprofiles','fieldsecurityprofileid',profileIds,'fieldsecurityprofileid,name'); }catch(_){}
+            for(const item of chunk) {
+                const matches=rows.filter(row=>normalizeGuid(row.fieldpermissionid)===normalizeGuid(item.resolvedObjectId || item.objectId));
+                if(matches.length!==1)continue;
+                const row=matches[0];
+                const profile=profiles.filter(p=>normalizeGuid(p.fieldsecurityprofileid)===normalizeGuid(row._fieldsecurityprofileid_value));
+                const profileName=profile.length===1?profile[0].name:null;
+                const column=[row.entityname,row.attributelogicalname].filter(Boolean).join('.');
+                map.set(key(item),{...(map.get(key(item)) || {kind:'displayOnly',confirmMissingSafe:false}),
+                    displayName:profileName?`${profileName} — column permission`:column?`Column permission for ${column}`:'Column permission',
+                    securityPermission:{profileName:profileName || null,tableLogicalName:row.entityname,columnLogicalName:row.attributelogicalname,
+                        read:row.canread,create:row.cancreate,update:row.canupdate}});
+            }
+        }catch(_) { /* Preserve unresolved evidence and original IDs on denied reads. */ }
+    }
+    const unnamed=items.filter(item=>{
+        const value=map.get(key(item));return !(value?.displayName || value?.name || value?.logicalName || value?.schemaName || value?.typeName);
+    });
+    for(const chunk of rg28Chunk(unnamed,25)) {
+        try {
+            const result=await getDependencyDisplayNames({dependencies:chunk});
+            for(const item of chunk) {
+                const name=result.identities?.[key(item)]?.name;
+                if(name)map.set(key(item),{...(map.get(key(item)) || {kind:'displayOnly',confirmMissingSafe:false}),displayName:name});
+            }
+        }catch(_){}
+    }
+}
+
 async function resolveDependencyIdentities(request) {
     try {
         const dependencies = request?.dependencies || [];
@@ -3860,6 +3899,7 @@ async function resolveDependencyIdentities(request) {
 
         await resolveSet(requiredItems, resultMap, "required");
         await resolveSet(dependentItems, dependentMap, "dependent");
+        await runResolverSafely("required-by descriptions", () => rgDepDescribeRequiredBy(dependentItems, dependentMap));
 
         const requiredHydratedByKey = new Map(requiredItems.map(item => [`${item.componentType}:${normalizeGuid(item.objectId)}`, item]));
 

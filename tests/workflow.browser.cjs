@@ -463,6 +463,15 @@ async function mockChrome() {
         for(const field of ['Auditing','MaxLength','FormXML','FetchXML'])assert.ok(snapshotResult.fields.includes(field),field);
         await snapshotPage.close();
         assert.deepEqual(errors, []);
+        const permissionEvidence=await page.evaluate(()=>{
+            const node=document.createElement('div');
+            node.innerHTML=rg282HumanDependencyCard({componentType:2,objectId:'source-id',identity:{displayName:'Total cost'},requiredBy:{objectId:'permission-id',identity:{displayName:'Cost <reviewers> — column permission',securityPermission:{read:4,create:0,update:null}}}},'satisfied');
+            return {text:node.textContent,detailsClosed:!node.querySelector('.rg282-technical-details').open,injected:!!node.querySelector('reviewers')};
+        });
+        assert.ok(permissionEvidence.text.includes('Cost <reviewers> — column permission'));
+        assert.ok(permissionEvidence.text.includes('Read: Allowed · Create: Not allowed · Update: Not available'));
+        assert.ok(permissionEvidence.text.includes('Source configuration only'));
+        assert.equal(permissionEvidence.detailsClosed,true);assert.equal(permissionEvidence.injected,false);
         // Full inventory remains visible even for runtime and unsupported types.
         await page.evaluate(() => {
             const rows=Array.from({length:63},(_,n)=>({componenttype:10080,inventoryTypeLabel:'Connection Reference',objectid:`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`}));
