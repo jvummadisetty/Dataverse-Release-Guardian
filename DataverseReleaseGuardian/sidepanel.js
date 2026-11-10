@@ -10525,6 +10525,11 @@ function rg25RebindSolutionSummary() {
         rg25ShowChoices,
         "Explore Choices"
     );
+    rg25BindSummaryCardByCount(
+        "otherCount",
+        () => { if (typeof rgWorkflow !== "undefined") rgWorkflow.openInventory(true); },
+        "Explore Other Components"
+    );
     if (typeof rgWorkflow !== "undefined") rgWorkflow.compactOverview();
 
 }

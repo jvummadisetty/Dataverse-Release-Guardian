@@ -550,3 +550,6 @@ body.rg-workflow { background: #f7f9fc; }
 .rg-workflow .rg-inventory-group .secondary-button { margin: 8px 0 14px; }
 .rg-workflow .rg-browse-inventory { margin-bottom: 16px; }
 .rg-workflow .rg-all-components h3 { scroll-margin-top: 95px; }
+.rg-workflow .rg-all-components > summary { cursor: pointer; font-size: 15px; font-weight: 600; padding: 2px 0; scroll-margin-top: 95px; }
+.rg-workflow .rg-all-components[open] > summary { margin-bottom: 12px; }
+.rg-workflow .rg-all-components > .rg-flow-link { margin: 0 0 10px; }
