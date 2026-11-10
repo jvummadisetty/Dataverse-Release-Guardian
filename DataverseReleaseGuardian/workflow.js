@@ -412,10 +412,15 @@ const rgWorkflow = {
                 if(!dependencies.length)return;
                 sendDynamicsMessage({action:'getDependencyDisplayNames',dependencies},response=>{
                     if(!panel.isConnected || !response?.success)return;
+                    if(response.typeLabels?.[type])title.textContent=response.typeLabels[type];
                     batch.forEach((row,index)=>{
                         const key=`${type}:${String(row.objectid || '').replace(/[{}]/g,'').toLowerCase()}`;
                         const identity=response.identities?.[key];
                         if(identity?.name || identity?.displayName)nodes[index].textContent=identity.name || identity.displayName;
+                        else {
+                            const code=response.diagnostics?.[key]?.code;
+                            nodes[index].textContent=code==='access_denied'?'Name unavailable — access denied':code==='unsupported_type'?'Name lookup not supported':code==='ambiguous'?'Name unresolved — multiple matches':'Name not returned by Dataverse';
+                        }
                     });
                 },()=>{});
             };

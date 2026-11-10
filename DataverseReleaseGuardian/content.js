@@ -4263,7 +4263,10 @@ async function getDependencyDisplayNames(request) {
         [60, "systemform"], [61, "webresource"], [90, "plugintype"],
         [91, "pluginassembly"], [92, "sdkmessageprocessingstep"],
         [93, "sdkmessageprocessingstepimage"], [95, "serviceendpoint"],
-        [371, "connectionreference"], [380, "environmentvariabledefinition"]
+        [371, "connectionreference"], [380, "environmentvariabledefinition"],
+        [300, "canvasapp"], [80, "appmodule"], [44, "duplicaterule"],
+        [62, "sitemap"], [63, "connectionrole"], [66, "customcontrol"],
+        [68, "customcontroldefaultconfig"], [70, "fieldsecurityprofile"]
     ]);
     const metadata = new Map();
     const label = value => value?.UserLocalizedLabel?.Label || value?.LocalizedLabels?.[0]?.Label;
@@ -4278,7 +4281,7 @@ async function getDependencyDisplayNames(request) {
             metadata.set(logicalName, dataverseFetch(
                 `${origin}EntityDefinitions(LogicalName='${logicalName}')` +
                 `?$select=EntitySetName,PrimaryIdAttribute,PrimaryNameAttribute` +
-                (["workflow", "sdkmessageprocessingstep"].includes(logicalName)
+                (["workflow", "sdkmessageprocessingstep", "canvasapp", "appmodule"].includes(logicalName)
                     ? `&$expand=Attributes($select=LogicalName,AttributeType)` : "")));
         }
         return metadata.get(logicalName);
@@ -4292,6 +4295,8 @@ async function getDependencyDisplayNames(request) {
                     const meta = await getMetadata(entities.get(type));
                     const idField = meta.PrimaryIdAttribute;
                     const nameField = meta.PrimaryNameAttribute;
+                    const displayField = ["canvasapp", "appmodule"].includes(entities.get(type)) &&
+                        meta.Attributes?.some(attr=>attr.LogicalName === "displayname" && attr.AttributeType === "String") ? "displayname" : nameField;
                     if (!meta.EntitySetName || !idField || !nameField) throw new Error("Primary-name metadata unavailable");
                     // Some dependency payloads contain the unique registration ID
                     // rather than the primary record ID. Only query metadata-confirmed GUID attributes.
@@ -4303,13 +4308,13 @@ async function getDependencyDisplayNames(request) {
                         try {
                             const ids = [...new Set(chunk.map(item => item.resolvedObjectId || item.objectId))];
                             const filter = ids.flatMap(id => idFields.map(field => `${field} eq ${id}`)).join(" or ");
-                            const select = [...new Set([...idFields, nameField])].join(",");
+                            const select = [...new Set([...idFields, nameField, displayField])].join(",");
                             const records = await fetchAllPages(`${origin}${meta.EntitySetName}?$select=${select}&$filter=${encodeURIComponent(filter)}`);
                             for (const item of chunk) {
                                 const id = item.resolvedObjectId || item.objectId;
                                 const matches = records.filter(row => idFields.some(field => normalizeGuid(row[field]) === id));
-                                if (matches.length === 1 && matches[0][nameField]) {
-                                    identities[key(item)] = { name: matches[0][nameField], context: "" };
+                                if (matches.length === 1 && (matches[0][displayField] || matches[0][nameField])) {
+                                    identities[key(item)] = { name: matches[0][displayField] || matches[0][nameField], context: "" };
                                     delete diagnostics[key(item)];
                                 } else if (matches.length > 1) {
                                     diagnostics[key(item)] = { code: "ambiguous" };

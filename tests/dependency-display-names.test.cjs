@@ -172,3 +172,21 @@ test('table, column, and choice metadata resolves dependencies from another tabl
     assert.equal(result.identities[key(column)].context, 'other_table');
     assert.equal(result.identities[key(choice)].name, 'other_choice');
 });
+
+test('Canvas and model-driven apps use metadata-confirmed display names; other object families remain resolvable',async()=>{
+    const h=harness();
+    const specs=[[300,'canvasapp'],[80,'appmodule'],[44,'duplicaterule'],[62,'sitemap'],[63,'connectionrole'],[66,'customcontrol'],[68,'customcontroldefaultconfig'],[70,'fieldsecurityprofile']];
+    const inputs=specs.map(([type,name],index)=>{
+        const rows=h.entity(name,`${name}_set`,`${name}id`,'name',[{LogicalName:'displayname',AttributeType:'String'}]);
+        rows.push({[`${name}id`]:guid(index+1),name:`Technical ${name}`,displayname:`Friendly ${name}`});
+        return dependency(type,index+1);
+    });
+    const result=await h.run(inputs);
+    assert.equal(result.identities[key(inputs[0])].name,'Friendly canvasapp');
+    assert.equal(result.identities[key(inputs[1])].name,'Friendly appmodule');
+    for(const input of inputs)assert.ok(result.identities[key(input)]?.name);
+    h.records.canvasapp_set[0].displayname=null;
+    assert.equal((await h.run([inputs[0]])).identities[key(inputs[0])].name,'Technical canvasapp');
+    h.failures.canvasapp_set={status:403};
+    const denied=await h.run([inputs[0]]);assert.equal(denied.identities[key(inputs[0])],undefined);assert.equal(denied.diagnostics[key(inputs[0])].code,'access_denied');
+});
