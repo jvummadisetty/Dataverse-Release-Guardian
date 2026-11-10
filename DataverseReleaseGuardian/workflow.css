@@ -534,3 +534,19 @@ body.rg-workflow { background: #f7f9fc; }
 .rg-workflow .rg-metric-help:hover { background: #ebf3fc; border-color: #0f6cbd; }
 .rg-workflow .rg-metric-tooltip { position: fixed; z-index: 1000; width: 290px; max-width: calc(100vw - 24px); padding: 12px 14px; border: 1px solid #dce5ef; border-radius: 8px; background: #fff; box-shadow: 0 4px 16px #16365b20; color: #334155; font: 12px/1.6 "Segoe UI", Arial, sans-serif; overflow-wrap: anywhere; }
 .rg-workflow .rg-metric-tooltip[hidden] { display: none; }
+
+/* Complete inventory: preserve all returned component types and technical identities. */
+.rg-workflow .rg-all-components > h3 { font-size: 16px; margin: 0 0 8px; }
+.rg-workflow .rg-inventory-group { border-bottom: 1px solid #e5eaf1; }
+.rg-workflow .rg-inventory-group:last-child { border-bottom: 0; }
+.rg-workflow .rg-inventory-group > summary { display: flex; align-items: center; gap: 8px; padding: 13px 0; cursor: pointer; font-size: 13px; }
+.rg-workflow .rg-inventory-group > summary::before { content: '▸'; color: #616c7b; }
+.rg-workflow .rg-inventory-group[open] > summary::before { content: '▾'; }
+.rg-workflow .rg-inventory-group > summary strong { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.rg-workflow .rg-inventory-group > summary > span { background: #ebf3fc; color: #0f6cbd; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+.rg-workflow .rg-inventory-row { padding: 10px 0; overflow-wrap: anywhere; }
+.rg-workflow .rg-inventory-row strong { display: block; font-size: 12px; font-weight: 500; }
+.rg-workflow .rg-inventory-row small { display: block; color: #616c7b; font-size: 11px; margin-top: 4px; }
+.rg-workflow .rg-inventory-group .secondary-button { margin: 8px 0 14px; }
+.rg-workflow .rg-browse-inventory { margin-bottom: 16px; }
+.rg-workflow .rg-all-components h3 { scroll-margin-top: 95px; }

@@ -336,6 +336,8 @@ const rgWorkflow = {
     analysisStarted(id) {
         this.analysisVersion++;
         this.invalidateTarget();
+        this.element('rgAllSolutionComponents')?.remove();
+        this.element('rgBrowseAllComponents')?.remove();
         this.analyzing = true;
         this.analyzedId = null;
         this.sourceReady = false;
@@ -355,9 +357,12 @@ const rgWorkflow = {
         this.element('analyzeSolutionButton').disabled = false;
         this.element('solutionSelect').disabled = false;
         this.element('rgFlowConnect').disabled = false;
+        this.renderAllComponents(success ? analyzedComponents : []);
         this.refreshContext();
     },
     resetAnalysis() {
+        this.element('rgAllSolutionComponents')?.remove();
+        this.element('rgBrowseAllComponents')?.remove();
         this.analysisVersion++;
         this.analyzedId = null;
         this.sourceReady = false;
@@ -366,6 +371,63 @@ const rgWorkflow = {
         document.body.dataset.analysisState = 'empty';
         this.invalidateTarget();
         this.refreshContext();
+    },
+    renderAllComponents(components) {
+        this.element('rgAllSolutionComponents')?.remove();
+        this.element('rgBrowseAllComponents')?.remove();
+        if (!components.length) return;
+        const panel=document.createElement('section');
+        panel.id='rgAllSolutionComponents';panel.className='card rg-all-components';
+        const heading=document.createElement('h3');heading.textContent='All solution components';panel.append(heading);
+        const scope=document.createElement('p');scope.className='rg-flow-note';
+        scope.textContent=`${components.length} normalized inventory records, including table subcomponents. Power Apps groups top-level objects differently, so its All count may differ. Workflow / Process includes more than cloud flows. Visibility here does not imply definition-comparison support.`;
+        panel.append(scope);
+        const groups=new Map();
+        for(const component of components) {
+            const type=Number(component.componenttype);
+            if(!groups.has(type))groups.set(type,[]);
+            groups.get(type).push(component);
+        }
+        const label=(type,rows)=>rows[0].inventoryTypeLabel || RG_COMPONENT_TYPES[type] || `Component type ${type}`;
+        for(const [type,rows] of [...groups].sort((a,b)=>label(...a).localeCompare(label(...b)))) {
+            const details=document.createElement('details');details.className='rg-inventory-group';
+            const summary=document.createElement('summary');
+            const title=document.createElement('strong');title.textContent=label(type,rows);
+            const count=document.createElement('span');count.textContent=String(rows.length);
+            summary.append(title,count);details.append(summary);
+            const body=document.createElement('div');details.append(body);
+            let shown=0;
+            const more=document.createElement('button');more.type='button';more.className='secondary-button';
+            const append=()=>{
+                more.remove();
+                const batch=rows.slice(shown,shown+25);shown+=batch.length;
+                const nodes=batch.map(row=>{
+                    const node=document.createElement('div');node.className='rg-inventory-row';
+                    const name=document.createElement('strong');name.textContent='Name not resolved';
+                    const technical=document.createElement('small');technical.textContent=`Type ${type} · ${row.objectid || row.solutioncomponentid || 'ID unavailable'}`;
+                    node.append(name,technical);body.append(node);return name;
+                });
+                if(shown<rows.length){more.textContent=`Show more (${rows.length-shown} remaining)`;body.append(more);}
+                const dependencies=batch.filter(row=>row.objectid).map(row=>({componentType:type,objectId:row.objectid}));
+                if(!dependencies.length)return;
+                sendDynamicsMessage({action:'getDependencyDisplayNames',dependencies},response=>{
+                    if(!panel.isConnected || !response?.success)return;
+                    batch.forEach((row,index)=>{
+                        const key=`${type}:${String(row.objectid || '').replace(/[{}]/g,'').toLowerCase()}`;
+                        const identity=response.identities?.[key];
+                        if(identity?.name || identity?.displayName)nodes[index].textContent=identity.name || identity.displayName;
+                    });
+                },()=>{});
+            };
+            more.addEventListener('click',append);
+            details.addEventListener('toggle',()=>{if(details.open && !shown)append();});
+            panel.append(details);
+        }
+        this.element('rgScreenSolution').append(panel);
+        const browse=document.createElement('button');browse.id='rgBrowseAllComponents';browse.type='button';
+        browse.className='secondary-button rg-browse-inventory';browse.textContent='Browse all solution components';
+        browse.addEventListener('click',()=>{rgShowScreen('solution');heading.tabIndex=-1;heading.focus();heading.scrollIntoView({block:'start'});});
+        this.element('rgScreenExplorer').querySelector('.rg-screen-header').after(browse);
     },
     refreshContext() {
         const source = rg282GetSourceSolution();

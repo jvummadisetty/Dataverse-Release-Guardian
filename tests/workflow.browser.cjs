@@ -463,6 +463,25 @@ async function mockChrome() {
         for(const field of ['Auditing','MaxLength','FormXML','FetchXML'])assert.ok(snapshotResult.fields.includes(field),field);
         await snapshotPage.close();
         assert.deepEqual(errors, []);
+        // Full inventory remains visible even for runtime and unsupported types.
+        await page.evaluate(() => {
+            const rows=Array.from({length:63},(_,n)=>({componenttype:10080,inventoryTypeLabel:'Connection Reference',objectid:`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`}));
+            rows.push({componenttype:19999,inventoryTypeLabel:'DVTableSearchEntity',objectid:'00000000-0000-0000-0000-111111111111'});
+            rows.push({componenttype:22222,objectid:'00000000-0000-0000-0000-222222222222'});
+            rgWorkflow.renderAllComponents(rows);
+            document.getElementById('rgAllSolutionComponents').style.display='block';
+            document.getElementById('rgScreenSolution').style.display='block';
+        });
+        const inventory=page.locator('#rgAllSolutionComponents');
+        assert.equal(await inventory.locator('details').count(),3);
+        const references=inventory.locator('details').filter({hasText:'Connection Reference'});
+        await references.locator('summary').click();
+        await page.waitForFunction(()=>document.querySelectorAll('#rgAllSolutionComponents .rg-inventory-row').length===25);
+        await references.getByRole('button',{name:'Show more (38 remaining)'}).click();
+        await references.getByRole('button',{name:'Show more (13 remaining)'}).click();
+        assert.equal(await references.locator('.rg-inventory-row').count(),63);
+        await page.evaluate(()=>rgWorkflow.renderAllComponents([]));
+        assert.equal(await page.locator('#rgAllSolutionComponents').count(),0);
         console.log('PASS: automatic setup; analysis loading/success/failure and navigation; explorer; source/target distinction; target auto-connect, retry, stale callbacks and source-tab pinning; evidence tabs; solution reset; source failure; 320/420/700px layouts; splash preservation; no browser errors.');
     } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
