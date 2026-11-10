@@ -3823,6 +3823,22 @@ async function rgDepMatchTargetRuntimeRecords(identities, matches, checkInfo) {
 // Source-side explanations only. These names/access flags never establish target readiness.
 async function rgDepDescribeRequiredBy(items, map) {
     const key=item=>`${item.componentType}:${normalizeGuid(item.objectId)}`;
+    // Known security components can be read directly even when EntityDefinitions access is restricted.
+    for(const spec of [
+        {type:20,set:'roles',id:'roleid',label:'Security role'},
+        {type:70,set:'fieldsecurityprofiles',id:'fieldsecurityprofileid',label:'Column security profile'}
+    ]) {
+        const selected=items.filter(item=>Number(item.componentType)===spec.type);
+        for(const chunk of rg28Chunk(selected,20)) {
+            try {
+                const rows=await rgDepFetchByIds(spec.set,spec.id,chunk.map(item=>item.resolvedObjectId || item.objectId),`${spec.id},name`);
+                for(const item of chunk) {
+                    const matches=rows.filter(row=>normalizeGuid(row[spec.id])===normalizeGuid(item.resolvedObjectId || item.objectId));
+                    if(matches.length===1 && matches[0].name)map.set(key(item),{...(map.get(key(item)) || {kind:'displayOnly',confirmMissingSafe:false}),displayName:matches[0].name,componentTypeLabel:spec.label});
+                }
+            }catch(_){}
+        }
+    }
     const permissions=items.filter(item=>Number(item.componentType)===71 || map.get(key(item))?.tableLogicalName==='fieldpermission');
     for(const chunk of rg28Chunk(permissions,20)) {
         try {
@@ -3922,7 +3938,8 @@ async function resolveDependencyIdentities(request) {
                     objectId: item.raw?.dependentcomponentobjectid || null,
                     componentType: item.raw?.dependentcomponenttype ?? null,
                     identity: requiredByIdentity,
-                    identityKey: rgDepIdentityKey(requiredByIdentity)
+                    identityKey: rgDepIdentityKey(requiredByIdentity),
+                    resolutionDiagnostic: requiredByIdentity ? null : runtimeDiagnostics.get(`${depType}:${depId}`) || {code:"name_unavailable",message:"The source component name was not returned. Verify component type, record visibility and source-tab refresh."}
                 }
             };
         });

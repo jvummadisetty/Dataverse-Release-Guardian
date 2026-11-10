@@ -250,3 +250,17 @@ test('required-by metadata-confirmed runtime field permissions retain mapping an
     const input={...item(2,1),raw:{dependentcomponentobjectid:guid(8),dependentcomponenttype:10123}};
     const result=await h.resolve([input]);assert.equal(result.dependencies[0].requiredBy.identity.securityPermission.profileName,'Cost reviewers');
 });
+
+test('required-by role/profile names resolve without metadata access and unresolved types retain diagnostics',async()=>{
+    const h=harness();h.denied.set('EntityDefinitions',403);
+    h.records.set('roles',[{roleid:guid(10),name:'Case worker'}]);
+    h.records.set('fieldsecurityprofiles',[{fieldsecurityprofileid:guid(11),name:'Cost reviewers'}]);
+    for(const [type,id,name] of [[20,10,'Case worker'],[70,11,'Cost reviewers']]){
+        const result=await h.resolve([{...item(2,1),raw:{dependentcomponentobjectid:guid(id),dependentcomponenttype:type}}]);
+        assert.equal(result.dependencies[0].requiredBy.identity.displayName,name);
+        assert.equal(result.dependencies[0].requiredBy.identityKey,null);
+    }
+    const result=await h.resolve([{...item(2,1),raw:{dependentcomponentobjectid:guid(12),dependentcomponenttype:9999}}]);
+    assert.equal(result.dependencies[0].requiredBy.componentType,9999);
+    assert.equal(result.dependencies[0].requiredBy.resolutionDiagnostic.code,'name_unavailable');
+});

@@ -15029,6 +15029,8 @@ function rg282HumanDependencyCard(dependency, status) {
                     ${sourceId ? `<div><dt>Dependency Source ID</dt><dd><code>${rgEscapeHtml(sourceId)}</code></dd></div>` : ""}
                     ${resolvedSourceId && String(resolvedSourceId).toLowerCase() !== String(sourceId || "").toLowerCase() ? `<div><dt>Resolved Component ID</dt><dd><code>${rgEscapeHtml(resolvedSourceId)}</code></dd></div>` : ""}
                     ${targetId ? `<div><dt>Target Component ID</dt><dd><code>${rgEscapeHtml(targetId)}</code></dd></div>` : ""}
+                    ${dependency?.requiredBy?.componentType != null ? `<div><dt>Required by component type</dt><dd>${rgEscapeHtml(rgComponentTypeName(dependency.requiredBy.componentType))} (${rgEscapeHtml(String(dependency.requiredBy.componentType))})</dd></div>` : ''}
+                    ${dependency?.requiredBy?.resolutionDiagnostic?.message ? `<div><dt>Required by lookup</dt><dd>${rgEscapeHtml(dependency.requiredBy.resolutionDiagnostic.message)}</dd></div>` : ''}
                     ${dependency?.requiredBy?.objectId ? `<div><dt>Required By ID</dt><dd><code>${rgEscapeHtml(dependency.requiredBy.objectId)}</code></dd></div>` : ""}
                 </dl>
             </details>
