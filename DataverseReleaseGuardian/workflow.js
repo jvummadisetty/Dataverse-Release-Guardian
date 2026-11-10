@@ -376,9 +376,9 @@ const rgWorkflow = {
         this.element('rgAllSolutionComponents')?.remove();
         this.element('rgBrowseAllComponents')?.remove();
         if (!components.length) return;
-        const panel=document.createElement('section');
+        const panel=document.createElement('details');
         panel.id='rgAllSolutionComponents';panel.className='card rg-all-components';
-        const heading=document.createElement('h3');heading.textContent='All solution components';panel.append(heading);
+        const heading=document.createElement('summary');heading.textContent='All solution components';panel.append(heading);
         const scope=document.createElement('p');scope.className='rg-flow-note';
         scope.textContent=`${components.length} normalized inventory records, including table subcomponents. Power Apps groups top-level objects differently, so its All count may differ. Workflow / Process includes more than cloud flows. Visibility here does not imply definition-comparison support.`;
         panel.append(scope);
@@ -391,6 +391,7 @@ const rgWorkflow = {
         const label=(type,rows)=>rows[0].inventoryTypeLabel || RG_COMPONENT_TYPES[type] || `Component type ${type}`;
         for(const [type,rows] of [...groups].sort((a,b)=>label(...a).localeCompare(label(...b)))) {
             const details=document.createElement('details');details.className='rg-inventory-group';
+            details.dataset.componentType=String(type);
             const summary=document.createElement('summary');
             const title=document.createElement('strong');title.textContent=label(type,rows);
             const count=document.createElement('span');count.textContent=String(rows.length);
@@ -431,8 +432,26 @@ const rgWorkflow = {
         this.element('rgScreenSolution').append(panel);
         const browse=document.createElement('button');browse.id='rgBrowseAllComponents';browse.type='button';
         browse.className='secondary-button rg-browse-inventory';browse.textContent='Browse all solution components';
-        browse.addEventListener('click',()=>{rgShowScreen('solution');heading.tabIndex=-1;heading.focus();heading.scrollIntoView({block:'start'});});
+        browse.addEventListener('click',()=>this.openInventory(false));
         this.element('rgScreenExplorer').querySelector('.rg-screen-header').after(browse);
+        const showAll=document.createElement('button');showAll.type='button';showAll.className='rg-flow-link';
+        showAll.id='rgInventoryShowAll';showAll.textContent='Show all component categories';showAll.hidden=true;
+        showAll.addEventListener('click',()=>this.openInventory(false));heading.after(showAll);
+    },
+    openInventory(otherOnly=false) {
+        const panel=this.element('rgAllSolutionComponents');
+        if(!panel)return;
+        rgShowScreen('solution');
+        const standardTypes=new Set([1,2,9,26,29,60,61]);
+        panel.querySelectorAll('.rg-inventory-group').forEach(group=>{
+            group.hidden=otherOnly && standardTypes.has(Number(group.dataset.componentType));
+        });
+        const summary=panel.querySelector(':scope > summary');
+        summary.textContent=otherOnly?'Other solution components':'All solution components';
+        this.element('rgInventoryShowAll').hidden=!otherOnly;
+        panel.open=true;
+        summary.focus();
+        summary.scrollIntoView({block:'start'});
     },
     refreshContext() {
         const source = rg282GetSourceSolution();
