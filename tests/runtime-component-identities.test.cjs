@@ -222,3 +222,31 @@ test('inventory family annotations preserve actual types and require an unambigu
     h.denied.set('EntityDefinitions',403);const denied=[{componenttype:10080}];
     await h.ctx.rgAnnotateInventoryTypes(denied);assert.equal(denied[0].inventoryComponentType,undefined);
 });
+
+test('required-by field permissions show source profile and access without inventing readiness identity',async()=>{
+    const h=harness();
+    h.records.set('fieldpermissions',[{fieldpermissionid:guid(8),entityname:'jcod_site',attributelogicalname:'jcod_cost',_fieldsecurityprofileid_value:guid(9),canread:4,cancreate:0,canupdate:4}]);
+    h.records.set('fieldsecurityprofiles',[{fieldsecurityprofileid:guid(9),name:'Cost reviewers'}]);
+    const input={...item(2,1),raw:{dependentcomponentobjectid:guid(8),dependentcomponenttype:71}};
+    const result=await h.resolve([input]);const dependent=result.dependencies[0].requiredBy;
+    assert.equal(dependent.identity.displayName,'Cost reviewers — column permission');
+    assert.equal(dependent.identity.securityPermission.read,4);
+    assert.equal(dependent.identity.securityPermission.create,0);
+    assert.equal(dependent.identity.confirmMissingSafe,false);assert.equal(dependent.identityKey,null);
+    assert.equal(dependent.objectId,guid(8));
+    h.denied.set('fieldsecurityprofiles',403);
+    const deniedProfile=(await h.resolve([input])).dependencies[0].requiredBy;
+    assert.equal(deniedProfile.identity.displayName,'Column permission for jcod_site.jcod_cost');
+    assert.equal(deniedProfile.identity.securityPermission.profileName,null);
+    h.denied.set('fieldpermissions',403);
+    const denied=(await h.resolve([input])).dependencies[0].requiredBy;
+    assert.equal(denied.identity,null);assert.equal(denied.objectId,guid(8));
+});
+
+test('required-by metadata-confirmed runtime field permissions retain mapping and source context',async()=>{
+    const h=harness();h.add(10123,'fieldpermission',{key:false});
+    h.records.get('fieldpermissions').push({fieldpermissionid:guid(8),name:'Permission',entityname:'jcod_site',attributelogicalname:'jcod_cost',_fieldsecurityprofileid_value:guid(9),canread:4,cancreate:0,canupdate:4});
+    h.records.set('fieldsecurityprofiles',[{fieldsecurityprofileid:guid(9),name:'Cost reviewers'}]);
+    const input={...item(2,1),raw:{dependentcomponentobjectid:guid(8),dependentcomponenttype:10123}};
+    const result=await h.resolve([input]);assert.equal(result.dependencies[0].requiredBy.identity.securityPermission.profileName,'Cost reviewers');
+});

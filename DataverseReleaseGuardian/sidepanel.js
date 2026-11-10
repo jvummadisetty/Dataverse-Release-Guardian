@@ -14990,6 +14990,12 @@ function rg282HumanDependencyCard(dependency, status) {
                     ? "AMBIGUOUS MATCH"
                     : "NOT VERIFIED";
 
+    const permission=dependency?.requiredBy?.identity?.securityPermission;
+    const access=value=>value===4 || value==='4' ? 'Allowed' : value===0 || value==='0' ? 'Not allowed' : 'Not available';
+    const requiredByEvidence=requiredBy
+        ? `<div class="rg-required-by-evidence"><strong>Required by</strong><p>${rgEscapeHtml(requiredBy)}</p>${permission ? `<p>Source column permission: Read: ${rgEscapeHtml(access(permission.read))} · Create: ${rgEscapeHtml(access(permission.create))} · Update: ${rgEscapeHtml(access(permission.update))}</p><small>Source configuration only. This does not establish destination permissions or a user’s effective access.</small>` : ''}</div>`
+        : dependency?.requiredBy?.objectId ? '<p class="rg-flow-note">Required by a source component whose name could not be retrieved. Its ID is available under Technical details.</p>' : '';
+
     const explanation = status === "missing"
         ? "Release Guardian resolved a high-confidence stable identity, checked the target environment, and did not find this prerequisite. Deployment may fail until it is provided."
         : status === "satisfied"
@@ -15005,6 +15011,7 @@ function rg282HumanDependencyCard(dependency, status) {
                     <span class="rg282-human-status">${rgEscapeHtml(statusLabel)}</span></summary>
                 <div class="rg-flow-finding-body">
                     <p>${rgEscapeHtml(explanation)}</p>
+                    ${requiredByEvidence}
                     ${status === "verification" ? '<p class="rg-flow-next-action">Confirm this prerequisite with the solution owner before deployment. An unresolved identity is not proof that it is missing.</p>' : ""}
 
             <details class="rg282-technical-details">
