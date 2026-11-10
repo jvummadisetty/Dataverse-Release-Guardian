@@ -423,11 +423,16 @@ async function rgAnnotateInventoryTypes(components) {
     const types=[...new Set(components.map(row=>Number(row.componenttype)).filter(type=>type>=10000))];
     for(const chunk of rg28Chunk(types,16)) {
         try {
-            const metas=await fetchAllPages(`${window.location.origin}/api/data/v9.2/EntityDefinitions?$select=ObjectTypeCode,LogicalName,EntitySetName,PrimaryIdAttribute&$filter=${encodeURIComponent(chunk.map(type=>`ObjectTypeCode eq ${type}`).join(' or '))}`);
+            const metas=await fetchAllPages(`${window.location.origin}/api/data/v9.2/EntityDefinitions?$select=ObjectTypeCode,LogicalName,EntitySetName,PrimaryIdAttribute,DisplayName&$filter=${encodeURIComponent(chunk.map(type=>`ObjectTypeCode eq ${type}`).join(' or '))}`);
             for(const type of chunk) {
                 const candidates=metas.filter(meta=>Number(meta.ObjectTypeCode)===type);
                 if(candidates.length!==1)continue;
                 const meta=candidates[0];
+                const label=meta.DisplayName?.UserLocalizedLabel?.Label || meta.DisplayName?.LocalizedLabels?.[0]?.Label || meta.LogicalName;
+                for(const row of components)if(Number(row.componenttype)===type) {
+                    row.inventoryTypeLabel=label;
+                    row.inventoryTableLogicalName=meta.LogicalName;
+                }
                 if(meta.LogicalName!=='connectionreference'||meta.EntitySetName!=='connectionreferences'||meta.PrimaryIdAttribute!=='connectionreferenceid')continue;
                 for(const row of components)if(Number(row.componenttype)===type)row.inventoryComponentType=371;
             }

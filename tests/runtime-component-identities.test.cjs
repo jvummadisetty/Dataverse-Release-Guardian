@@ -216,6 +216,9 @@ test('inventory family annotations preserve actual types and require an unambigu
     await h.ctx.rgAnnotateInventoryTypes(rows);
     assert.equal(rows[0].inventoryComponentType,371);assert.equal(rows[0].componenttype,10080);
     assert.equal(rows[1].inventoryComponentType,undefined);
+    assert.equal(rows[0].inventoryTypeLabel,'Type connectionreference');
+    assert.equal(rows[1].inventoryTypeLabel,'Type unrelated');
+    assert.equal(rows[1].inventoryTableLogicalName,'unrelated');
     h.denied.set('EntityDefinitions',403);const denied=[{componenttype:10080}];
     await h.ctx.rgAnnotateInventoryTypes(denied);assert.equal(denied[0].inventoryComponentType,undefined);
 });
